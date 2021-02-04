@@ -30,3 +30,15 @@
 *.exe
 *.out
 *.app
+*.suo
+*.yyvd
+*.lnk
+*.ilk
+*.pdb
+*.iobj
+*.ipdb
+*.ipch
+launcher/Debug/
+*.db
+RTS/Debug/
+RTS/Release/
