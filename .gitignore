@@ -42,3 +42,4 @@ launcher/Debug/
 *.db
 RTS/Debug/
 RTS/Release/
+*.opendb
