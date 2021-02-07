@@ -18,6 +18,7 @@ v2f					g_screenHalfSize;
 Map*				g_map = 0;
 v2f					g_cameraLimits;
 f32					g_screenRectRadius = 0.f;
+yySprite*			g_spriteGrid = 0;
 
 v2f GetSpriteSize(yySprite* sprite) 
 {
@@ -336,7 +337,9 @@ vidOk:
 //	auto testTextureGPU = g_videoDriver->CreateTextureFromFile("../res/textures/test.dds", true, false, true);
 //	auto gui_pictureBox = yyGUICreatePictureBox(v4f(0.f, 0.f, 100.f, 100.f), testTextureGPU, 1);
 	
-	//yySprite* spriteLevel = yyCreateSprite(v4f(0.f, 0.f, 1160.f, 224.f), g_videoDriver->CreateTextureFromFile("../res/GA3E/level1_ground.png", false, false, true), false);
+	yyPtr<yySprite> spriteGrid = yyCreateSprite(v4f(0.f, 0.f, 10.f, 10.f), yyGetTextureResource("../res/editor/grid_white.png", false, false, true), true);
+	g_spriteGrid = spriteGrid.m_data;
+
 	//yySprite* spriteHero = yyCreateSprite(v4f(0.f, 0.f, 50.f, 76.f), g_videoDriver->CreateTextureFromFile("../res/GA3E/hero0.png", false, false, true), true);
 	//spriteHero->SetMainFrame(123, 8, 174, 85);
 	//spriteHero->m_objectBase.m_localPosition.set(10.f, 20.f, 0.f, 0.f);

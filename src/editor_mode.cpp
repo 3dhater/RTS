@@ -24,6 +24,7 @@ extern Map* g_map;
 extern yyGUIFont*			g_defaultFont;
 extern v2f					g_cameraLimits;
 extern f32					g_screenRectRadius;
+extern yySprite*			g_spriteGrid;
 
 void EditorStep(f32 dt)
 {
@@ -200,7 +201,36 @@ void EditorStep(f32 dt)
 				}
 			}
 		}
+	}
 
+	if (g_inputContex->isKeyHold(yyKey::K_LALT)) {
+		f32 gridSize = 10.f;
+
+		auto sprite = g_spriteGrid;
+		auto beginPos = *g_spriteCameraPosition - g_screenHalfSize;
+
+		if (beginPos.x != 0.f)
+			beginPos.x -= (f32)((int)beginPos.x % (int)gridSize);
+		if (beginPos.y != 0.f)
+			beginPos.y -= (f32)((int)beginPos.y % (int)gridSize);
+
+
+
+
+		auto currPos = beginPos;
+		for (int h = 0, hsz = (g_screenHalfSize.y*2.f) / gridSize; h < hsz; ++h)
+		{
+			for (int w = 0, wsz = (g_screenHalfSize.x*2.f) / gridSize; w < wsz; ++w)
+			{
+				sprite->m_objectBase.m_globalMatrix[3].x = currPos.x;
+				sprite->m_objectBase.m_globalMatrix[3].y = currPos.y;
+				g_videoDriver->DrawSprite(sprite);
+
+				currPos.x += gridSize;
+			}
+			currPos.y += gridSize;
+			currPos.x = beginPos.x;
+		}
 	}
 
 	if (g_currentMapSprite)
