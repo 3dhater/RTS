@@ -25,6 +25,7 @@ extern yyGUIFont*			g_defaultFont;
 extern v2f					g_cameraLimits;
 extern f32					g_screenRectRadius;
 extern yySprite*			g_spriteGrid;
+extern yySprite*			g_spriteGridRed;
 
 void EditorStep(f32 dt)
 {
@@ -147,8 +148,8 @@ void EditorStep(f32 dt)
 			{
 				g_map->Generate();
 				g_isNewMapWindow = false;
-				g_cameraLimits.x = g_map->m_mapHalfSizeX;
-				g_cameraLimits.y = g_map->m_mapHalfSizeY;
+				g_cameraLimits.x = g_map->m_mapSizeX;
+				g_cameraLimits.y = g_map->m_mapSizeY;
 			}
 			if (ImGui::Button("Close"))
 			{
@@ -204,33 +205,61 @@ void EditorStep(f32 dt)
 	}
 
 	if (g_inputContex->isKeyHold(yyKey::K_LALT)) {
-		f32 gridSize = 10.f;
+		auto beginPos = g_map->m_cellPosition;
+		auto currPos = beginPos;
+	//	int ii = 0;
+		for (int y = 0; y < g_map->m_cellsLeftY; ++y)
+		{
+			s32 indexY = y + g_map->m_firstCellIndexY;
 
-		auto sprite = g_spriteGrid;
+			for (int x = 0; x < g_map->m_cellsLeftX; ++x)
+			{
+				s32 indexX = x + g_map->m_firstCellIndexX;
+
+			/*	if(ii == 0)
+				{
+					ii = 1;
+					printf("[%f][%f]\n", beginPos.x, beginPos.y);
+				}*/
+				yySprite * sprite = g_spriteGrid;
+				if (g_map->m_cells[indexY][indexX].m_flags & MapCell::flag_clear)
+				{
+					sprite = g_spriteGrid;
+				}
+				else if (g_map->m_cells[indexY][indexX].m_flags & MapCell::flag_structure)
+				{
+					sprite = g_spriteGridRed;
+				}
+				sprite->m_objectBase.m_globalMatrix[3].x = currPos.x;
+				sprite->m_objectBase.m_globalMatrix[3].y = currPos.y;
+				g_videoDriver->DrawSprite(sprite);
+				currPos.x += GAME_MAP_GRID_SIZE;
+			}
+			currPos.y += GAME_MAP_GRID_SIZE;
+			currPos.x = beginPos.x;
+		}
+		/*auto sprite = g_spriteGrid;
 		auto beginPos = *g_spriteCameraPosition - g_screenHalfSize;
 
 		if (beginPos.x != 0.f)
-			beginPos.x -= (f32)((int)beginPos.x % (int)gridSize);
+			beginPos.x -= (f32)((int)beginPos.x % (int)GAME_MAP_GRID_SIZE);
 		if (beginPos.y != 0.f)
-			beginPos.y -= (f32)((int)beginPos.y % (int)gridSize);
-
-
-
+			beginPos.y -= (f32)((int)beginPos.y % (int)GAME_MAP_GRID_SIZE);
 
 		auto currPos = beginPos;
-		for (int h = 0, hsz = (g_screenHalfSize.y*2.f) / gridSize; h < hsz; ++h)
+		for (int h = 0, hsz = (g_screenHalfSize.y*2.f) / GAME_MAP_GRID_SIZE; h < hsz; ++h)
 		{
-			for (int w = 0, wsz = (g_screenHalfSize.x*2.f) / gridSize; w < wsz; ++w)
+			for (int w = 0, wsz = (g_screenHalfSize.x*2.f) / GAME_MAP_GRID_SIZE; w < wsz; ++w)
 			{
 				sprite->m_objectBase.m_globalMatrix[3].x = currPos.x;
 				sprite->m_objectBase.m_globalMatrix[3].y = currPos.y;
 				g_videoDriver->DrawSprite(sprite);
 
-				currPos.x += gridSize;
+				currPos.x += GAME_MAP_GRID_SIZE;
 			}
-			currPos.y += gridSize;
+			currPos.y += GAME_MAP_GRID_SIZE;
 			currPos.x = beginPos.x;
-		}
+		}*/
 	}
 
 	if (g_currentMapSprite)

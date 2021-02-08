@@ -19,6 +19,7 @@ Map*				g_map = 0;
 v2f					g_cameraLimits;
 f32					g_screenRectRadius = 0.f;
 yySprite*			g_spriteGrid = 0;
+yySprite*			g_spriteGridRed = 0;
 
 v2f GetSpriteSize(yySprite* sprite) 
 {
@@ -337,8 +338,10 @@ vidOk:
 //	auto testTextureGPU = g_videoDriver->CreateTextureFromFile("../res/textures/test.dds", true, false, true);
 //	auto gui_pictureBox = yyGUICreatePictureBox(v4f(0.f, 0.f, 100.f, 100.f), testTextureGPU, 1);
 	
-	yyPtr<yySprite> spriteGrid = yyCreateSprite(v4f(0.f, 0.f, 10.f, 10.f), yyGetTextureResource("../res/editor/grid_white.png", false, false, true), true);
+	yyPtr<yySprite> spriteGrid = yyCreateSprite(v4f(0.f, 0.f, 10.f, 10.f), yyGetTextureResource("../res/editor/grid_white.png", false, false, true), false);
 	g_spriteGrid = spriteGrid.m_data;
+	yyPtr<yySprite> spriteGridRed = yyCreateSprite(v4f(0.f, 0.f, 10.f, 10.f), yyGetTextureResource("../res/editor/grid_red.png", false, false, true), false);
+	g_spriteGridRed = spriteGridRed.m_data;
 
 	//yySprite* spriteHero = yyCreateSprite(v4f(0.f, 0.f, 50.f, 76.f), g_videoDriver->CreateTextureFromFile("../res/GA3E/hero0.png", false, false, true), true);
 	//spriteHero->SetMainFrame(123, 8, 174, 85);
@@ -372,7 +375,7 @@ vidOk:
 
 	v2f curCoordsOnPressRMB;
 	g_screenHalfSize = v2f(p_window->m_currentSize.x, p_window->m_currentSize.y) * 0.5f;
-	g_screenRectRadius = g_screenHalfSize.distance(v2f());
+	g_screenRectRadius = g_screenHalfSize.distance(v2f()) * 2.f;
 
 	
 	GameCursor cursor_arrow;
@@ -410,7 +413,7 @@ vidOk:
 	bool run = true;
 	while( run )
 	{
-		v2f cameraMoveVector;
+		//v2f cameraMoveVector;
 
 		static u64 t1 = 0;
 		u64 t2 = yyGetTime();
@@ -469,6 +472,8 @@ vidOk:
 			f32  spriteCameraMoveSpeed = 1000.f;
 			f32  spriteCameraScaleSpeed = 1.f;
 
+			bool findCell = false;
+
 			if (g_inputContex->isKeyHold(yyKey::K_CTRL) || g_inputContex->isKeyHold(yyKey::K_LCTRL)
 				|| g_inputContex->isKeyHold(yyKey::K_RCTRL))
 			{
@@ -491,13 +496,25 @@ vidOk:
 			else
 			{
 				if (g_inputContex->isKeyHold(yyKey::K_LEFT))
+				{
+					findCell = true;
 					g_spriteCameraPosition->x -= spriteCameraMoveSpeed * deltaTime;
+				}
 				if (g_inputContex->isKeyHold(yyKey::K_RIGHT))
+				{
+					findCell = true;
 					g_spriteCameraPosition->x += spriteCameraMoveSpeed * deltaTime;
+				}
 				if (g_inputContex->isKeyHold(yyKey::K_UP))
+				{
+					findCell = true;
 					g_spriteCameraPosition->y -= spriteCameraMoveSpeed * deltaTime;
+				}
 				if (g_inputContex->isKeyHold(yyKey::K_DOWN))
+				{
+					findCell = true;
 					g_spriteCameraPosition->y += spriteCameraMoveSpeed * deltaTime;
+				}
 				if (g_inputContex->isKeyHold(yyKey::K_NUM_7))
 					spriteCameraScale->x -= spriteCameraScaleSpeed * deltaTime;
 				if (g_inputContex->isKeyHold(yyKey::K_NUM_9))
@@ -514,25 +531,42 @@ vidOk:
 			if (g_gameCursorPosition.y > gameCursorLimits.y) g_gameCursorPosition.y = gameCursorLimits.y;
 
 			const f32 scroll_zone = 25.f;
-			if (g_gameCursorPosition.x < scroll_zone) g_spriteCameraPosition->x -= (spriteCameraMoveSpeed*2.f) * deltaTime;
-			if (g_gameCursorPosition.x > gameCursorLimits.x - scroll_zone) g_spriteCameraPosition->x += (spriteCameraMoveSpeed*2.f) * deltaTime;
-			if (g_gameCursorPosition.y < scroll_zone) g_spriteCameraPosition->y -= (spriteCameraMoveSpeed*2.f) * deltaTime;
-			if (g_gameCursorPosition.y > gameCursorLimits.y - scroll_zone) g_spriteCameraPosition->y += (spriteCameraMoveSpeed*2.f) * deltaTime;
+			if (g_gameCursorPosition.x < scroll_zone)
+			{
+				g_spriteCameraPosition->x -= (spriteCameraMoveSpeed*2.f) * deltaTime;
+				findCell = true;
+			}
+			if (g_gameCursorPosition.x > gameCursorLimits.x - scroll_zone)
+			{
+				g_spriteCameraPosition->x += (spriteCameraMoveSpeed*2.f) * deltaTime;
+				findCell = true;
+			}
+			if (g_gameCursorPosition.y < scroll_zone)
+			{
+				g_spriteCameraPosition->y -= (spriteCameraMoveSpeed*2.f) * deltaTime;
+				findCell = true;
+			}
+			if (g_gameCursorPosition.y > gameCursorLimits.y - scroll_zone)
+			{
+				g_spriteCameraPosition->y += (spriteCameraMoveSpeed*2.f) * deltaTime;
+				findCell = true;
+			}
 
-			g_spriteCameraPosition->x += cameraMoveVector.x;
-			g_spriteCameraPosition->y += cameraMoveVector.y;
-
+		
 			if (g_spriteCameraPosition->x > g_cameraLimits.x) g_spriteCameraPosition->x = g_cameraLimits.x;
 			if (g_spriteCameraPosition->y > g_cameraLimits.y) g_spriteCameraPosition->y = g_cameraLimits.y;
-			if (g_spriteCameraPosition->x < -g_cameraLimits.x) g_spriteCameraPosition->x = -g_cameraLimits.x;
-			if (g_spriteCameraPosition->y < -g_cameraLimits.y) g_spriteCameraPosition->y = -g_cameraLimits.y;
+			if (g_spriteCameraPosition->x < 0.f) g_spriteCameraPosition->x = 0.f;
+			if (g_spriteCameraPosition->y < 0.f) g_spriteCameraPosition->y = 0.f;
 
 			g_spriteCameraPosition->x = std::floor(g_spriteCameraPosition->x);
 			g_spriteCameraPosition->y = std::floor(g_spriteCameraPosition->y);
 			g_gameCursorPosition.x = std::floor(g_gameCursorPosition.x);
 			g_gameCursorPosition.y = std::floor(g_gameCursorPosition.y);
 
-
+			if (findCell)
+			{
+				g_map->FindCellPosition();
+			}
 			
 
 			if (g_inputContex->isKeyHold(yyKey::K_F12))

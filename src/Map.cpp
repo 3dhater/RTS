@@ -3,10 +3,16 @@
 extern int g_mapGenSizeX;
 extern int g_mapGenSizeY;
 extern yyVideoDriverAPI*	g_videoDriver;
+extern v2f*	g_spriteCameraPosition;
+extern v2f  g_screenHalfSize;
 
 Map::Map()
 {
 	m_bgSprite = 0;
+	m_cells = 0;
+	m_cellsX = m_cellsY = 0;
+	m_firstCellIndexY = m_firstCellIndexX = 0;
+	m_cellsLeftY = m_cellsLeftX = 0;
 }
 
 Map::~Map()
@@ -14,11 +20,48 @@ Map::~Map()
 	Destroy();
 }
 
+void Map::FindCellPosition()
+{
+	m_cellPosition.x = g_spriteCameraPosition->x - g_screenHalfSize.x;
+	if (m_cellPosition.x < 0.f)
+		m_cellPosition.x = 0.f;
+
+	m_cellPosition.y = g_spriteCameraPosition->y - g_screenHalfSize.y;
+	if (m_cellPosition.y < 0.f)
+		m_cellPosition.y = 0.f;
+
+	if (m_cellPosition.x != 0.f)
+		m_cellPosition.x -= (f32)((int)m_cellPosition.x % (int)GAME_MAP_GRID_SIZE);
+	if (m_cellPosition.y != 0.f)
+		m_cellPosition.y -= (f32)((int)m_cellPosition.y % (int)GAME_MAP_GRID_SIZE);
+//	printf("[%f][%f]\n", m_cellPosition.x, m_cellPosition.y);
+//	printf("[%f][%f][%f] - [%i][%i]\n", 
+//		m_cellPosition.x + m_mapHalfSizeX, m_cellPosition.y + m_mapHalfSizeY, m_mapSizeX,
+//		s32((m_cellPosition.x + m_mapHalfSizeX) * 0.1f), s32((m_cellPosition.y + m_mapHalfSizeY) * 0.1f));
+	m_firstCellIndexX = s32((m_cellPosition.x) * 0.1f);
+	m_firstCellIndexY = s32((m_cellPosition.y) * 0.1f);
+	if (m_firstCellIndexY < 0) m_firstCellIndexY = 0;
+	if (m_firstCellIndexX < 0) m_firstCellIndexX = 0;
+
+
+	s32 cellsScreenX = (s32(g_screenHalfSize.x + g_screenHalfSize.x) / (int)GAME_MAP_GRID_SIZE);
+	s32 cellsScreenY = (s32(g_screenHalfSize.y + g_screenHalfSize.y) / (int)GAME_MAP_GRID_SIZE);
+	
+	m_cellsLeftY = (m_cellsY - m_firstCellIndexY);
+	m_cellsLeftX = (m_cellsX - m_firstCellIndexX);
+
+	if (m_cellsLeftX > cellsScreenX)m_cellsLeftX = cellsScreenX;
+	if (m_cellsLeftY > cellsScreenY)m_cellsLeftY = cellsScreenY;
+
+	printf("[%i][%i]\t[%i][%i]\n", m_firstCellIndexY, m_firstCellIndexX, m_cellsLeftY, m_cellsLeftX);
+}
+
 void Map::Generate()
 {
 	Destroy();
 	float spriteSize = 512.f;
-	m_bgSprite = yyCreateSprite(v4f(0.f, 0.f, spriteSize, spriteSize), yyGetTextureResource("../res/textures/bg/grass.dds", false, false, true), true);
+	float spriteSizeHalf = spriteSize * 0.5f;
+	m_bgSprite = yyCreateSprite(v4f(0.f, 0.f, spriteSize, spriteSize), yyGetTextureResource("../res/textures/bg/grass.dds", false, false, true), false);
 
 	m_bgSpriteRadius = v2f(spriteSize * 0.5f, spriteSize * 0.5f).distance(v2f());
 
@@ -30,15 +73,50 @@ void Map::Generate()
 	for (int y = 0; y < g_mapGenSizeY; ++y) {
 		for (int x = 0; x < g_mapGenSizeX; ++x) {
 			v2f pos = v2f(spriteSize * (f32)x + (0.f* (f32)x), spriteSize * (f32)y + (0.f* (f32)y));
-			pos.x -= m_mapHalfSizeX;
-			pos.y -= m_mapHalfSizeY;
+			//pos.x -= m_mapHalfSizeX;
+			//pos.y -= m_mapHalfSizeY;
 			m_bgSpritePositions.push_back(pos);
 		}
 	}
+
+	m_leftTop.x = m_bgSpritePositions[0].x;
+	m_leftTop.y = m_bgSpritePositions[0].y;
+	m_rightBottom.x = m_bgSpritePositions[m_bgSpritePositions.size() - 1].x + spriteSize;
+	m_rightBottom.y = m_bgSpritePositions[m_bgSpritePositions.size() - 1].y + spriteSize;
+
+	printf("LT:[%f][%f] RB:[%f][%f]\n", m_leftTop.x, m_leftTop.y, m_rightBottom.x, m_rightBottom.y);
+
+	m_cellsX = (m_mapSizeX / GAME_MAP_GRID_SIZE) + 1;
+	m_cellsY = (m_mapSizeY / GAME_MAP_GRID_SIZE) + 1;
+	m_cells = new MapCell*[m_cellsY];
+	for (u32 i = 0; i < m_cellsY; ++i)
+	{
+		m_cells[i] = new MapCell[m_cellsX];
+	}
+	m_cells[10][10].m_flags |= MapCell::flag_structure;
+	m_cells[10][11].m_flags |= MapCell::flag_structure;
+	m_cells[10][12].m_flags |= MapCell::flag_structure;
+	
+	m_cells[11][10].m_flags |= MapCell::flag_structure;
+	//m_cells[11][11].m_flags |= MapCell::flag_structure;
+	m_cells[11][12].m_flags |= MapCell::flag_structure;
+
+	m_cells[12][10].m_flags |= MapCell::flag_structure;
+	m_cells[12][11].m_flags |= MapCell::flag_structure;
+	m_cells[12][12].m_flags |= MapCell::flag_structure;
+	FindCellPosition();
 }
 
 void Map::Destroy()
 {
+	if (m_cells)
+	{
+		for (u32 i = 0; i < m_cellsY; ++i)
+		{
+			delete[] m_cells[i];
+		}
+		delete[] m_cells;
+	}
 	if (m_bgSprite)
 	{
 		if (m_bgSprite->m_texture)
