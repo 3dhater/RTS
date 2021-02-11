@@ -20,6 +20,32 @@ Map::~Map()
 	Destroy();
 }
 
+MapCell * Map::GetCellUnderCursor(const v2f& gameCursorPosition)
+{
+	f32 m = 1.f / GAME_MAP_GRID_SIZE;
+	auto pos = gameCursorPosition + *g_spriteCameraPosition - g_screenHalfSize;
+	if (pos.x < 0.f)
+		pos.x = 0.f;
+
+	if (pos.y < 0.f)
+		pos.y = 0.f;
+
+	if (pos.x != 0.f)
+		pos.x -= (f32)((int)pos.x % (int)GAME_MAP_GRID_SIZE);
+	if (pos.y != 0.f)
+		pos.y -= (f32)((int)pos.y % (int)GAME_MAP_GRID_SIZE);
+
+	auto CellIndexX = s32((pos.x) * m);
+	auto CellIndexY = s32((pos.y) * m);
+	if (CellIndexX < 0) CellIndexX = 0;
+	if (CellIndexY < 0) CellIndexY = 0;
+
+	if (CellIndexX >= m_cellsX)CellIndexX = m_cellsX-1;
+	if (CellIndexY >= m_cellsY)CellIndexY = m_cellsY - 1;
+
+	return &m_cells[CellIndexY][CellIndexX];
+}
+
 void Map::FindCellPosition()
 {
 	m_cellPosition.x = g_spriteCameraPosition->x - g_screenHalfSize.x;
@@ -40,8 +66,8 @@ void Map::FindCellPosition()
 //		s32((m_cellPosition.x + m_mapHalfSizeX) * 0.1f), s32((m_cellPosition.y + m_mapHalfSizeY) * 0.1f));
 	m_firstCellIndexX = s32((m_cellPosition.x) * 0.1f);
 	m_firstCellIndexY = s32((m_cellPosition.y) * 0.1f);
-	if (m_firstCellIndexY < 0) m_firstCellIndexY = 0;
 	if (m_firstCellIndexX < 0) m_firstCellIndexX = 0;
+	if (m_firstCellIndexY < 0) m_firstCellIndexY = 0;
 
 
 	s32 cellsScreenX = (s32(g_screenHalfSize.x + g_screenHalfSize.x) / (int)GAME_MAP_GRID_SIZE);
@@ -53,7 +79,7 @@ void Map::FindCellPosition()
 	if (m_cellsLeftX > cellsScreenX)m_cellsLeftX = cellsScreenX;
 	if (m_cellsLeftY > cellsScreenY)m_cellsLeftY = cellsScreenY;
 
-	printf("[%i][%i]\t[%i][%i]\n", m_firstCellIndexY, m_firstCellIndexX, m_cellsLeftY, m_cellsLeftX);
+	//printf("[%i][%i]\t[%i][%i]\n", m_firstCellIndexY, m_firstCellIndexX, m_cellsLeftY, m_cellsLeftX);
 }
 
 void Map::Generate()
@@ -92,18 +118,36 @@ void Map::Generate()
 	for (u32 i = 0; i < m_cellsY; ++i)
 	{
 		m_cells[i] = new MapCell[m_cellsX];
-	}
-	m_cells[10][10].m_flags |= MapCell::flag_structure;
-	m_cells[10][11].m_flags |= MapCell::flag_structure;
-	m_cells[10][12].m_flags |= MapCell::flag_structure;
 	
-	m_cells[11][10].m_flags |= MapCell::flag_structure;
-	//m_cells[11][11].m_flags |= MapCell::flag_structure;
-	m_cells[11][12].m_flags |= MapCell::flag_structure;
+		if (i == 0 || i == m_cellsY-1)
+		{
+			for (u32 o = 0; o < m_cellsX; ++o)
+			{
+				m_cells[i][o].m_flags |= MapCell::flag_wall;
+			}
+		}
+		else
+		{
+			for (u32 o = 0; o < m_cellsX; ++o)
+			{
+				if (o == 0 || o == m_cellsX-1)
+				{
+					m_cells[i][o].m_flags |= MapCell::flag_wall;
+				}
+			}
+		}
+	}
+	m_cells[10][10].m_flags |= MapCell::flag_wall;
+	m_cells[10][11].m_flags |= MapCell::flag_wall;
+	m_cells[10][12].m_flags |= MapCell::flag_wall;
+	
+	m_cells[11][10].m_flags |= MapCell::flag_wall;
+	//m_cells[11][11].m_flags |= MapCell::flag_wall;
+	m_cells[11][12].m_flags |= MapCell::flag_wall;
 
-	m_cells[12][10].m_flags |= MapCell::flag_structure;
-	m_cells[12][11].m_flags |= MapCell::flag_structure;
-	m_cells[12][12].m_flags |= MapCell::flag_structure;
+	m_cells[12][10].m_flags |= MapCell::flag_wall;
+	m_cells[12][11].m_flags |= MapCell::flag_wall;
+	m_cells[12][12].m_flags |= MapCell::flag_wall;
 	FindCellPosition();
 }
 

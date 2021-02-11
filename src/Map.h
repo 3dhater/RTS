@@ -34,7 +34,7 @@ struct MapCell
 	enum flag
 	{
 		flag_clear = 1,
-		flag_structure = 2
+		flag_wall  = 2
 	};
 };
 
@@ -64,6 +64,7 @@ public:
 	s32 m_cellsLeftY;
 	s32 m_cellsLeftX;
 	void FindCellPosition();
+	MapCell * GetCellUnderCursor(const v2f& gameCursorPosition);
 	
 	yySprite*	m_bgSprite;
 	f32			m_bgSpriteRadius;

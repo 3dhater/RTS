@@ -3,5 +3,24 @@ Info: Init video driver - OpenGL...
 Info: Init OpenGL 3.3
 Info: Vendor: Intel
 Info: Renderer: Intel(R) HD Graphics 510
+Info: Load texture: ../res/editor/grid_white.png
+Info: Load texture: ../res/editor/grid_red.png
+Info: Load texture: ../res/textures/gui/cursors1.png
+Info: Load texture: ..\res\fonts\Noto\notosans.txt0.dds
+Info: Load texture: ..\res\fonts\Noto\notosans.txt1.dds
+Info: Load texture: ..\res\fonts\Noto\notosans.txt2.dds
+Info: Load texture: ..\res\fonts\Noto\notosans.txt3.dds
+Info: Load texture: ..\res\fonts\Noto\notosans.txt4.dds
+Info: Load texture: ..\res\fonts\Noto\notosans.txt5.dds
+Info: Load texture: ..\res\fonts\Noto\notosans.txt6.dds
+Info: Load texture: ../res/gui/menubg.png
+Info: Load texture: ../res/gui/pause1.png
+Info: Load texture: ../res/gui/pause2.png
+Info: Load texture: ../res/gui/continue1.png
+Info: Load texture: ../res/gui/continue2.png
+Info: Load texture: ../res/gui/continue3.png
+Info: Load texture: ../res/gui/exit1.png
+Info: Load texture: ../res/gui/exit2.png
+Info: Load texture: ../res/gui/exit3.png
 Info: Destroy main window...
 Info: Destroy video driver...

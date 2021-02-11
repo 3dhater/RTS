@@ -21,6 +21,48 @@ f32					g_screenRectRadius = 0.f;
 yySprite*			g_spriteGrid = 0;
 yySprite*			g_spriteGridRed = 0;
 
+yyGUIButton* g_GUIPlayPauseButton = 0;
+yyGUIButton* g_GUIContinueButton = 0;
+yyGUIButton* g_GUIExitButton = 0;
+yyGUIPictureBox* g_GUIMenuBG = 0;
+bool g_isPause = false;
+
+void EnterGameMenu()
+{
+	g_isPause = true;
+	g_GUIMenuBG->SetVisible(true);
+	g_GUIContinueButton->SetVisible(true);
+	g_GUIExitButton->SetVisible(true);
+}
+void LeaveGameMenu()
+{
+	g_isPause = false;
+	g_GUIMenuBG->SetVisible(false);
+	g_GUIContinueButton->SetVisible(false);
+	g_GUIExitButton->SetVisible(false);
+	g_GUIPlayPauseButton->m_isChecked = false;
+}
+
+void PlayPauseButton_onRelease(yyGUIElement* elem, s32 m_id)
+{
+	if (g_isPause)
+	{
+		LeaveGameMenu();
+	}
+	else
+	{
+		EnterGameMenu();
+	}
+}
+void ContinueButton_onRelease(yyGUIElement* elem, s32 m_id)
+{
+	LeaveGameMenu();
+}
+void ExitButton_onRelease(yyGUIElement* elem, s32 m_id)
+{
+	yyQuit();
+}
+
 v2f GetSpriteSize(yySprite* sprite) 
 {
 	assert(sprite);
@@ -136,19 +178,29 @@ void updateInputContext() // call before all callbacks
 	g_inputContex->m_isLMBUp = false;
 	g_inputContex->m_mouseDelta.x = 0.f;
 	g_inputContex->m_mouseDelta.y = 0.f;
+	g_inputContex->m_cursorCoordsForGUI = g_inputContex->m_cursorCoords;
+
+	memset(g_inputContex->m_key_pressed, 0, sizeof(u8) * 256);
+	memset(g_inputContex->m_key_hit, 0, sizeof(u8) * 256);
 }
 
 void window_callbackKeyboard(yyWindow*, bool isPress, u32 key, char16_t character)
 {
-	if(isPress)
+	if (isPress)
 	{
-		if(key < 256)
+		if (key < 256)
+		{
 			g_inputContex->m_key_hold[key] = 1;
+			g_inputContex->m_key_hit[key] = 1;
+		}
 	}
 	else
 	{
-		if(key < 256)
+		if (key < 256)
+		{
 			g_inputContex->m_key_hold[key] = 0;
+			g_inputContex->m_key_pressed[key] = 1;
+		}
 	}
 }
 
@@ -409,6 +461,32 @@ vidOk:
 	}
 //	ShowCursor(FALSE);
 
+	g_videoDriver->UseBlend(false);
+
+	g_GUIMenuBG = yyGUICreatePictureBox(v4f(0.f, 0.f, 512.f, 512.f), yyGetTextureResource("../res/gui/menubg.png", false, false, true), -1);
+	g_GUIMenuBG->SetVisible(false);
+	g_GUIMenuBG->IgnoreInput(true);
+
+	g_GUIPlayPauseButton = yyGUICreateButton(v4f(0.f, 0.f, 32.f, 32.f), yyGetTextureResource("../res/gui/pause1.png", false, false, true), -1);
+	g_GUIPlayPauseButton->SetMouseClickTexture(yyGetTextureResource("../res/gui/pause2.png", false, false, true));
+	g_GUIPlayPauseButton->m_useAsCheckbox = true;
+	//g_GUIPlayPauseButton->m_onRelease = PlayPauseButton_onRelease;
+	g_GUIPlayPauseButton->m_onClick = PlayPauseButton_onRelease;
+
+	g_GUIContinueButton = yyGUICreateButton(v4f(0.f, 0.f, 250.f, 40.f), yyGetTextureResource("../res/gui/continue1.png", false, false, true), -1);
+	g_GUIContinueButton->SetMouseHoverTexture(yyGetTextureResource("../res/gui/continue2.png", false, false, true));
+	g_GUIContinueButton->SetMouseClickTexture(yyGetTextureResource("../res/gui/continue3.png", false, false, true));
+	g_GUIContinueButton->m_offset.set(50.f, 50.f);
+	g_GUIContinueButton->SetVisible(false);
+	g_GUIContinueButton->m_onRelease = ContinueButton_onRelease;
+
+	g_GUIExitButton = yyGUICreateButton(v4f(0.f, 0.f, 250.f, 40.f), yyGetTextureResource("../res/gui/exit1.png", false, false, true), -1);
+	g_GUIExitButton->SetMouseHoverTexture(yyGetTextureResource("../res/gui/exit2.png", false, false, true));
+	g_GUIExitButton->SetMouseClickTexture(yyGetTextureResource("../res/gui/exit3.png", false, false, true));
+	g_GUIExitButton->m_offset.set(50.f, 100.f);
+	g_GUIExitButton->SetVisible(false);
+	g_GUIExitButton->m_onRelease = ExitButton_onRelease;
+
 	f32 deltaTime = 0.f;
 	bool run = true;
 	while( run )
@@ -422,6 +500,7 @@ vidOk:
 		deltaTime = m_tick / 1000.f;
 
 		updateInputContext();
+		g_inputContex->m_cursorCoordsForGUI = g_gameCursorPosition;
 
 #ifdef YY_PLATFORM_WINDOWS
 		MSG msg;
@@ -603,6 +682,8 @@ vidOk:
 			spriteHero->Update(deltaTime);
 			g_videoDriver->DrawSprite(spriteHero);*/
 
+			yyGUIDrawAll();
+
 			v2f spriteCameraPositionSave = *g_spriteCameraPosition;
 			g_spriteCameraPosition->set(0.f, 0.f);
 			activeCursor->m_sprite->m_objectBase.m_globalMatrix[3].x = g_gameCursorPosition.x - g_screenHalfSize.x;
@@ -612,7 +693,6 @@ vidOk:
 			*g_spriteCameraPosition = spriteCameraPositionSave;
 
 
-			yyGUIDrawAll();
 			g_videoDriver->EndDraw();
 			if (useImgui)
 			{

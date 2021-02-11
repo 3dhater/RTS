@@ -12,6 +12,7 @@ s32 g_selectedListItemBGObject = -1;
 MapSprite*			g_currentMapSprite = 0;
 
 bool g_isNewMapWindow = false;
+bool g_isEditWalls = false;
 
 extern SpriteCache *		g_spriteCachePtr;
 extern yyVideoDriverAPI*	g_videoDriver;
@@ -67,6 +68,23 @@ void EditorStep(f32 dt)
 				if (ImGui::Button("New Map"))
 				{
 					g_isNewMapWindow = true;
+				}
+				if (g_map->m_bgSpritePositions.size())
+				{
+					if (!g_isEditWalls)
+					{
+						if (ImGui::Button("Edit walls"))
+						{
+							g_isEditWalls = true;
+						}
+					}
+					else
+					{
+						if (ImGui::Button("End edit walls"))
+						{
+							g_isEditWalls = false;
+						}
+					}
 				}
 				ImGui::EndTabItem();
 			}
@@ -183,7 +201,7 @@ void EditorStep(f32 dt)
 	{
 		for (auto & sp : g_map->m_bgObjects)
 		{
-			sp.m_data->m_gui_text->m_visible = false;
+			sp.m_data->m_gui_text->SetVisible(false);
 
 			auto sprite = sp.m_data->m_spritePtr;
 			auto & spritePos = sp.m_data->m_spritePosition;
@@ -198,13 +216,31 @@ void EditorStep(f32 dt)
 				{
 					sp.m_data->m_gui_text->m_offset.x = spritePos.x + offsetX;
 					sp.m_data->m_gui_text->m_offset.y = spritePos.y + offsetY;
-					sp.m_data->m_gui_text->m_visible = true;
+					sp.m_data->m_gui_text->SetVisible(true);
 				}
 			}
 		}
 	}
-
-	if (g_inputContex->isKeyHold(yyKey::K_LALT)) {
+	
+	if (g_inputContex->m_isLMBHold && g_isEditWalls)
+	{
+		auto cell = g_map->GetCellUnderCursor(g_gameCursorPosition);
+		if (cell)
+		{
+			cell->m_flags |= cell->flag_wall;
+		}
+	}
+	if (g_inputContex->m_isRMBHold && g_isEditWalls)
+	{
+		auto cell = g_map->GetCellUnderCursor(g_gameCursorPosition);
+		if (cell)
+		{
+			if(cell->m_flags & cell->flag_wall)
+				cell->m_flags ^= cell->flag_wall;
+		}
+	}
+	if (g_inputContex->isKeyHold(yyKey::K_LALT) || g_isEditWalls)
+	{
 		auto beginPos = g_map->m_cellPosition;
 		auto currPos = beginPos;
 	//	int ii = 0;
@@ -226,7 +262,7 @@ void EditorStep(f32 dt)
 				{
 					sprite = g_spriteGrid;
 				}
-				else if (g_map->m_cells[indexY][indexX].m_flags & MapCell::flag_structure)
+				else if (g_map->m_cells[indexY][indexX].m_flags & MapCell::flag_wall)
 				{
 					sprite = g_spriteGridRed;
 				}
