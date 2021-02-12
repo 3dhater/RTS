@@ -5,30 +5,16 @@
 #include <GL/gl3w.h>
 
 #include "RTS.h"
+#include "Game.h"
 
-int g_mapGenSizeX = 10;
-int g_mapGenSizeY = 10;
+
 s32 g_selectedListItemBGObject = -1;
 MapSprite*			g_currentMapSprite = 0;
 
 bool g_isNewMapWindow = false;
 bool g_isEditWalls = false;
 
-extern SpriteCache *		g_spriteCachePtr;
-extern yyVideoDriverAPI*	g_videoDriver;
-extern v2f					g_rawInputCursorPosition;
-extern yyInputContext*		g_inputContex;
-extern v2f  g_gameCursorPosition;
-extern v2f*	g_spriteCameraPosition;
-extern v2f  g_screenHalfSize;
-extern Map* g_map;
-extern yyGUIFont*			g_defaultFont;
-extern v2f					g_cameraLimits;
-extern f32					g_screenRectRadius;
-extern yySprite*			g_spriteGrid;
-extern yySprite*			g_spriteGridRed;
-
-void EditorStep(f32 dt)
+void Game::EditorStep(f32 dt)
 {
 	ImGui_ImplOpenGL3_NewFrame();
 	ImGui_ImplWin32_NewFrame();
@@ -36,23 +22,23 @@ void EditorStep(f32 dt)
 
 	if (g_currentMapSprite)
 	{
-		if (g_inputContex->isKeyHold(yyKey::K_LSHIFT))
+		if (m_inputContext->isKeyHold(yyKey::K_LSHIFT))
 		{
-			g_currentMapSprite->m_spritePosition.x = g_gameCursorPosition.x + g_spriteCameraPosition->x - g_screenHalfSize.x;
-			g_currentMapSprite->m_spritePosition.y = g_gameCursorPosition.y + g_spriteCameraPosition->y - g_screenHalfSize.y;
+			g_currentMapSprite->m_spritePosition.x = m_gameCursorPosition.x + m_spriteCameraPosition->x - m_screenHalfSize.x;
+			g_currentMapSprite->m_spritePosition.y = m_gameCursorPosition.y + m_spriteCameraPosition->y - m_screenHalfSize.y;
 		}
 
-		if (g_inputContex->m_isLMBDown)
+		if (m_inputContext->m_isLMBDown)
 		{
 			g_currentMapSprite = 0;
 		}
 
-		if (g_inputContex->isKeyHold(yyKey::K_DELETE) && g_currentMapSprite)
+		if (m_inputContext->isKeyHold(yyKey::K_DELETE) && g_currentMapSprite)
 		{
-			auto find_result = g_map->m_bgObjects.find_by_value(g_currentMapSprite);
+			auto find_result = m_map->m_bgObjects.find_by_value(g_currentMapSprite);
 			if (find_result)
 			{
-				g_map->m_bgObjects.erase_node(find_result);
+				m_map->m_bgObjects.erase_node(find_result);
 			}
 			g_currentMapSprite = 0;
 		}
@@ -69,7 +55,7 @@ void EditorStep(f32 dt)
 				{
 					g_isNewMapWindow = true;
 				}
-				if (g_map->m_bgSpritePositions.size())
+				if (m_map->m_bgSpritePositions.size())
 				{
 					if (!g_isEditWalls)
 					{
@@ -94,12 +80,12 @@ void EditorStep(f32 dt)
 				if (ImGui::BeginChild("AddedBGObjects", ImVec2(ImGui::GetWindowContentRegionWidth(), 200), false, ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_NoMove))
 				{
 					int n = 0;
-					for (auto & sp : g_map->m_bgObjects)
+					for (auto & sp : m_map->m_bgObjects)
 					{
 						if (ImGui::Selectable(sp.m_data->m_name.data(), g_selectedListItemBGObject == n))
 						{
 							g_selectedListItemBGObject = n;
-							auto findSprite = g_map->m_bgObjects.find(n);
+							auto findSprite = m_map->m_bgObjects.find(n);
 							if (findSprite)
 							{
 								g_currentMapSprite = findSprite->m_data;
@@ -134,7 +120,7 @@ void EditorStep(f32 dt)
 							yyStringW wstr;
 							wstr += newMapSprite->m_name.data();
 
-							newMapSprite->m_gui_text = yyGUICreateText(v2f(), g_defaultFont, wstr.data());
+							newMapSprite->m_gui_text = yyGUICreateText(v2f(), m_defaultFont, wstr.data());
 
 
 							newMapSprite->m_spritePtr = newSprite;
@@ -142,7 +128,7 @@ void EditorStep(f32 dt)
 							yyGetTextureSize(newSprite->m_texture, &textureSize);
 							newMapSprite->m_radius = v2f((f32)textureSize.x, (f32)textureSize.y).distance(v2f());
 
-							g_map->m_bgObjects.push_back(newMapSprite);
+							m_map->m_bgObjects.push_back(newMapSprite);
 
 						}
 						yyDestroy(path);
@@ -160,14 +146,14 @@ void EditorStep(f32 dt)
 		if (ImGui::Begin("New Map", 0, ImGuiWindowFlags_AlwaysAutoResize))
 		{
 			ImGui::Text("Set map size");
-			ImGui::SliderInt("X segments", &g_mapGenSizeX, 3, 100);
-			ImGui::SliderInt("Y segments", &g_mapGenSizeY, 3, 100);
+			ImGui::SliderInt("X segments", &m_mapGenSizeX, 3, 100);
+			ImGui::SliderInt("Y segments", &m_mapGenSizeY, 3, 100);
 			if (ImGui::Button("Create"))
 			{
-				g_map->Generate();
+				m_map->Generate();
 				g_isNewMapWindow = false;
-				g_cameraLimits.x = g_map->m_mapSizeX;
-				g_cameraLimits.y = g_map->m_mapSizeY;
+				m_cameraLimits.x = m_map->m_mapSizeX;
+				m_cameraLimits.y = m_map->m_mapSizeY;
 			}
 			if (ImGui::Button("Close"))
 			{
@@ -177,42 +163,42 @@ void EditorStep(f32 dt)
 		}
 	}
 	
-	g_videoDriver->UseDepth(false);
-	g_videoDriver->UseBlend(false);
+	m_gpu->UseDepth(false);
+	m_gpu->UseBlend(false);
 
-	for (u16 i = 0, sz = g_map->m_bgSpritePositions.size(); i < sz; ++i)
+	for (u16 i = 0, sz = m_map->m_bgSpritePositions.size(); i < sz; ++i)
 	{
-		auto & spritePos = g_map->m_bgSpritePositions[i];
+		auto & spritePos = m_map->m_bgSpritePositions[i];
 
-		f32 dist = g_spriteCameraPosition->distance(spritePos);
+		f32 dist = m_spriteCameraPosition->distance(spritePos);
 
-		if ((dist - g_map->m_bgSpriteRadius) <= g_screenRectRadius)
+		if ((dist - m_map->m_bgSpriteRadius) <= m_screenRectRadius)
 		{
-			g_map->m_bgSprite->m_objectBase.m_globalMatrix[3].x = spritePos.x;
-			g_map->m_bgSprite->m_objectBase.m_globalMatrix[3].y = spritePos.y;
-			g_videoDriver->DrawSprite(g_map->m_bgSprite);
+			m_map->m_bgSprite->m_objectBase.m_globalMatrix[3].x = spritePos.x;
+			m_map->m_bgSprite->m_objectBase.m_globalMatrix[3].y = spritePos.y;
+			m_gpu->DrawSprite(m_map->m_bgSprite);
 		}
 
 	}
 
-	f32 offsetX = -g_spriteCameraPosition->x + g_screenHalfSize.x;
-	f32 offsetY = -g_spriteCameraPosition->y + g_screenHalfSize.y;
+	f32 offsetX = -m_spriteCameraPosition->x + m_screenHalfSize.x;
+	f32 offsetY = -m_spriteCameraPosition->y + m_screenHalfSize.y;
 
 	{
-		for (auto & sp : g_map->m_bgObjects)
+		for (auto & sp : m_map->m_bgObjects)
 		{
 			sp.m_data->m_gui_text->SetVisible(false);
 
 			auto sprite = sp.m_data->m_spritePtr;
 			auto & spritePos = sp.m_data->m_spritePosition;
-			f32 dist = g_spriteCameraPosition->distance(sp.m_data->m_spritePosition);
-			if ((dist - sp.m_data->m_radius) <= g_screenRectRadius)
+			f32 dist = m_spriteCameraPosition->distance(sp.m_data->m_spritePosition);
+			if ((dist - sp.m_data->m_radius) <= m_screenRectRadius)
 			{
 				sprite->m_objectBase.m_globalMatrix[3].x = spritePos.x;
 				sprite->m_objectBase.m_globalMatrix[3].y = spritePos.y;
-				g_videoDriver->DrawSprite(sprite);
+				m_gpu->DrawSprite(sprite);
 
-				if (g_inputContex->isKeyHold(yyKey::K_LCTRL))
+				if (m_inputContext->isKeyHold(yyKey::K_LCTRL))
 				{
 					sp.m_data->m_gui_text->m_offset.x = spritePos.x + offsetX;
 					sp.m_data->m_gui_text->m_offset.y = spritePos.y + offsetY;
@@ -222,60 +208,64 @@ void EditorStep(f32 dt)
 		}
 	}
 	
-	if (g_inputContex->m_isLMBHold && g_isEditWalls)
+	if (m_inputContext->m_isLMBHold && g_isEditWalls)
 	{
-		auto cell = g_map->GetCellUnderCursor(g_gameCursorPosition);
+		auto cell = m_map->GetCellUnderCursor(m_gameCursorPosition);
 		if (cell)
 		{
 			cell->m_flags |= cell->flag_wall;
 		}
 	}
-	if (g_inputContex->m_isRMBHold && g_isEditWalls)
+	if (m_inputContext->m_isRMBHold && g_isEditWalls)
 	{
-		auto cell = g_map->GetCellUnderCursor(g_gameCursorPosition);
+		auto cell = m_map->GetCellUnderCursor(m_gameCursorPosition);
 		if (cell)
 		{
 			if(cell->m_flags & cell->flag_wall)
 				cell->m_flags ^= cell->flag_wall;
 		}
 	}
-	if (g_inputContex->isKeyHold(yyKey::K_LALT) || g_isEditWalls)
+	if (m_inputContext->isKeyHold(yyKey::K_LALT) || g_isEditWalls)
 	{
-		auto beginPos = g_map->m_cellPosition;
+		auto beginPos = m_map->m_cellPosition;
 		auto currPos = beginPos;
 	//	int ii = 0;
-		for (int y = 0; y < g_map->m_cellsLeftY; ++y)
+		for (int y = 0; y < m_map->m_cellsLeftY; ++y)
 		{
-			s32 indexY = y + g_map->m_firstCellIndexY;
+			s32 indexY = y + m_map->m_firstCellIndexY;
 
-			for (int x = 0; x < g_map->m_cellsLeftX; ++x)
+			for (int x = 0; x < m_map->m_cellsLeftX; ++x)
 			{
-				s32 indexX = x + g_map->m_firstCellIndexX;
+				s32 indexX = x + m_map->m_firstCellIndexX;
 
 			/*	if(ii == 0)
 				{
 					ii = 1;
 					printf("[%f][%f]\n", beginPos.x, beginPos.y);
 				}*/
-				yySprite * sprite = g_spriteGrid;
-				if (g_map->m_cells[indexY][indexX].m_flags & MapCell::flag_clear)
+				yySprite * sprite = m_spriteGridWhite;
+				if (m_map->m_cells[indexY][indexX].m_flags & MapCell::flag_clear)
 				{
-					sprite = g_spriteGrid;
+					sprite = m_spriteGridWhite;
 				}
-				else if (g_map->m_cells[indexY][indexX].m_flags & MapCell::flag_wall)
+				else if (m_map->m_cells[indexY][indexX].m_flags & MapCell::flag_structure)
 				{
-					sprite = g_spriteGridRed;
+					sprite = m_spriteGridBlue;
+				}
+				else if (m_map->m_cells[indexY][indexX].m_flags & MapCell::flag_wall)
+				{
+					sprite = m_spriteGridRed;
 				}
 				sprite->m_objectBase.m_globalMatrix[3].x = currPos.x;
 				sprite->m_objectBase.m_globalMatrix[3].y = currPos.y;
-				g_videoDriver->DrawSprite(sprite);
+				m_gpu->DrawSprite(sprite);
 				currPos.x += GAME_MAP_GRID_SIZE;
 			}
 			currPos.y += GAME_MAP_GRID_SIZE;
 			currPos.x = beginPos.x;
 		}
 		/*auto sprite = g_spriteGrid;
-		auto beginPos = *g_spriteCameraPosition - g_screenHalfSize;
+		auto beginPos = *m_spriteCameraPosition - m_screenHalfSize;
 
 		if (beginPos.x != 0.f)
 			beginPos.x -= (f32)((int)beginPos.x % (int)GAME_MAP_GRID_SIZE);
@@ -283,13 +273,13 @@ void EditorStep(f32 dt)
 			beginPos.y -= (f32)((int)beginPos.y % (int)GAME_MAP_GRID_SIZE);
 
 		auto currPos = beginPos;
-		for (int h = 0, hsz = (g_screenHalfSize.y*2.f) / GAME_MAP_GRID_SIZE; h < hsz; ++h)
+		for (int h = 0, hsz = (m_screenHalfSize.y*2.f) / GAME_MAP_GRID_SIZE; h < hsz; ++h)
 		{
-			for (int w = 0, wsz = (g_screenHalfSize.x*2.f) / GAME_MAP_GRID_SIZE; w < wsz; ++w)
+			for (int w = 0, wsz = (m_screenHalfSize.x*2.f) / GAME_MAP_GRID_SIZE; w < wsz; ++w)
 			{
 				sprite->m_objectBase.m_globalMatrix[3].x = currPos.x;
 				sprite->m_objectBase.m_globalMatrix[3].y = currPos.y;
-				g_videoDriver->DrawSprite(sprite);
+				m_gpu->DrawSprite(sprite);
 
 				currPos.x += GAME_MAP_GRID_SIZE;
 			}
@@ -303,28 +293,28 @@ void EditorStep(f32 dt)
 		auto spriteSize = GetSpriteSize(g_currentMapSprite->m_spritePtr);
 		auto spriteSizeHalf = spriteSize * 0.5f;
 
-		g_videoDriver->DrawLine2D(
+		m_gpu->DrawLine2D(
 			v3f(g_currentMapSprite->m_spritePosition.x - spriteSizeHalf.x + offsetX,
 				g_currentMapSprite->m_spritePosition.y - spriteSizeHalf.y + offsetY, 0.f),
 			v3f(g_currentMapSprite->m_spritePosition.x + spriteSizeHalf.x + offsetX,
 				g_currentMapSprite->m_spritePosition.y - spriteSizeHalf.y + offsetY, 0.f),
 			ColorLime
 		);
-		g_videoDriver->DrawLine2D(
+		m_gpu->DrawLine2D(
 			v3f(g_currentMapSprite->m_spritePosition.x - spriteSizeHalf.x + offsetX,
 				g_currentMapSprite->m_spritePosition.y - spriteSizeHalf.y + offsetY, 0.f),
 			v3f(g_currentMapSprite->m_spritePosition.x - spriteSizeHalf.x + offsetX,
 				g_currentMapSprite->m_spritePosition.y + spriteSizeHalf.y + offsetY, 0.f),
 			ColorLime
 		);
-		g_videoDriver->DrawLine2D(
+		m_gpu->DrawLine2D(
 			v3f(g_currentMapSprite->m_spritePosition.x + spriteSizeHalf.x + offsetX,
 				g_currentMapSprite->m_spritePosition.y - spriteSizeHalf.y + offsetY, 0.f),
 			v3f(g_currentMapSprite->m_spritePosition.x + spriteSizeHalf.x + offsetX,
 				g_currentMapSprite->m_spritePosition.y + spriteSizeHalf.y + offsetY, 0.f),
 			ColorLime
 		);
-		g_videoDriver->DrawLine2D(
+		m_gpu->DrawLine2D(
 			v3f(g_currentMapSprite->m_spritePosition.x - spriteSizeHalf.x + offsetX,
 				g_currentMapSprite->m_spritePosition.y + spriteSizeHalf.y + offsetY, 0.f),
 			v3f(g_currentMapSprite->m_spritePosition.x + spriteSizeHalf.x + offsetX,

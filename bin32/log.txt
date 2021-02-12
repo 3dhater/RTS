@@ -5,6 +5,7 @@ Info: Vendor: Intel
 Info: Renderer: Intel(R) HD Graphics 510
 Info: Load texture: ../res/editor/grid_white.png
 Info: Load texture: ../res/editor/grid_red.png
+Info: Load texture: ../res/editor/grid_blue.png
 Info: Load texture: ../res/textures/gui/cursors1.png
 Info: Load texture: ..\res\fonts\Noto\notosans.txt0.dds
 Info: Load texture: ..\res\fonts\Noto\notosans.txt1.dds
@@ -22,5 +23,5 @@ Info: Load texture: ../res/gui/continue3.png
 Info: Load texture: ../res/gui/exit1.png
 Info: Load texture: ../res/gui/exit2.png
 Info: Load texture: ../res/gui/exit3.png
-Info: Destroy main window...
-Info: Destroy video driver...
+Info: Load texture: ../res/textures/bg/grass.dds
+Info: Load texture: E:\Code\RTS\res\textures\bg\dirt1.png

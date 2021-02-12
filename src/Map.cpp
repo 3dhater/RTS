@@ -1,10 +1,7 @@
 ﻿#include "RTS.h"
+#include "Game.h"
 
-extern int g_mapGenSizeX;
-extern int g_mapGenSizeY;
-extern yyVideoDriverAPI*	g_videoDriver;
-extern v2f*	g_spriteCameraPosition;
-extern v2f  g_screenHalfSize;
+extern Game*		g_game;
 
 Map::Map()
 {
@@ -23,7 +20,7 @@ Map::~Map()
 MapCell * Map::GetCellUnderCursor(const v2f& gameCursorPosition)
 {
 	f32 m = 1.f / GAME_MAP_GRID_SIZE;
-	auto pos = gameCursorPosition + *g_spriteCameraPosition - g_screenHalfSize;
+	auto pos = gameCursorPosition + *g_game->m_spriteCameraPosition - g_game->m_screenHalfSize;
 	if (pos.x < 0.f)
 		pos.x = 0.f;
 
@@ -48,11 +45,11 @@ MapCell * Map::GetCellUnderCursor(const v2f& gameCursorPosition)
 
 void Map::FindCellPosition()
 {
-	m_cellPosition.x = g_spriteCameraPosition->x - g_screenHalfSize.x;
+	m_cellPosition.x = g_game->m_spriteCameraPosition->x - g_game->m_screenHalfSize.x;
 	if (m_cellPosition.x < 0.f)
 		m_cellPosition.x = 0.f;
 
-	m_cellPosition.y = g_spriteCameraPosition->y - g_screenHalfSize.y;
+	m_cellPosition.y = g_game->m_spriteCameraPosition->y - g_game->m_screenHalfSize.y;
 	if (m_cellPosition.y < 0.f)
 		m_cellPosition.y = 0.f;
 
@@ -70,8 +67,8 @@ void Map::FindCellPosition()
 	if (m_firstCellIndexY < 0) m_firstCellIndexY = 0;
 
 
-	s32 cellsScreenX = (s32(g_screenHalfSize.x + g_screenHalfSize.x) / (int)GAME_MAP_GRID_SIZE);
-	s32 cellsScreenY = (s32(g_screenHalfSize.y + g_screenHalfSize.y) / (int)GAME_MAP_GRID_SIZE);
+	s32 cellsScreenX = (s32(g_game->m_screenHalfSize.x + g_game->m_screenHalfSize.x) / (int)GAME_MAP_GRID_SIZE);
+	s32 cellsScreenY = (s32(g_game->m_screenHalfSize.y + g_game->m_screenHalfSize.y) / (int)GAME_MAP_GRID_SIZE);
 	
 	m_cellsLeftY = (m_cellsY - m_firstCellIndexY);
 	m_cellsLeftX = (m_cellsX - m_firstCellIndexX);
@@ -91,13 +88,15 @@ void Map::Generate()
 
 	m_bgSpriteRadius = v2f(spriteSize * 0.5f, spriteSize * 0.5f).distance(v2f());
 
-	m_mapSizeX = spriteSize * g_mapGenSizeX;
-	m_mapSizeY = spriteSize * g_mapGenSizeY;
+	m_mapSizeX = spriteSize * g_game->m_mapGenSizeX;
+	m_mapSizeY = spriteSize * g_game->m_mapGenSizeY;
 	m_mapHalfSizeX = m_mapSizeX * 0.5f;
 	m_mapHalfSizeY = m_mapSizeY * 0.5f;
 
-	for (int y = 0; y < g_mapGenSizeY; ++y) {
-		for (int x = 0; x < g_mapGenSizeX; ++x) {
+	for (int y = 0; y < g_game->m_mapGenSizeY; ++y) 
+	{
+		for (int x = 0; x < g_game->m_mapGenSizeX; ++x)
+		{
 			v2f pos = v2f(spriteSize * (f32)x + (0.f* (f32)x), spriteSize * (f32)y + (0.f* (f32)y));
 			//pos.x -= m_mapHalfSizeX;
 			//pos.y -= m_mapHalfSizeY;
@@ -165,7 +164,7 @@ void Map::Destroy()
 	{
 		if (m_bgSprite->m_texture)
 		{
-			g_videoDriver->UnloadTexture(m_bgSprite->m_texture);
+			g_game->m_gpu->UnloadTexture(m_bgSprite->m_texture);
 			m_bgSprite->m_texture = 0;
 		}
 

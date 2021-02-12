@@ -167,9 +167,13 @@
     <ClCompile Include="..\..\YuYu\libs\imgui\imgui_tables.cpp" />
     <ClCompile Include="..\..\YuYu\libs\imgui\imgui_widgets.cpp" />
     <ClCompile Include="..\src\editor_mode.cpp" />
+    <ClCompile Include="..\src\Game.cpp" />
     <ClCompile Include="..\src\game_main.cpp" />
     <ClCompile Include="..\src\game_mode.cpp" />
     <ClCompile Include="..\src\Map.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\src\Game.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
