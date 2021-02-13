@@ -179,6 +179,8 @@ void log_onInfo(const char* message)
 
 Game::Game()
 {
+	m_structureTest = 0;
+
 	m_mapGenSizeX = 10;
 	m_mapGenSizeY = 10;
 	m_isPause = false;
@@ -200,6 +202,8 @@ Game::Game()
 
 Game::~Game()
 {
+	if (m_structureTest) delete m_structureTest;
+
 	if (m_useImgui)
 	{
 		ImGui_ImplOpenGL3_Shutdown();
@@ -256,7 +260,7 @@ bool Game::Init(std::vector<yyStringA>& cmdLineArr)
 	yyLogSetWarningOutput(log_onError);
 
 	m_window = yyCreate<yyWindow>();
-	if (!m_window->init(m_mainTargetSize.x, m_mainTargetSize.y, 0))
+	if (!m_window->init((s32)m_mainTargetSize.x, (s32)m_mainTargetSize.y, 0))
 	{
 		YY_PRINT_FAILED;
 		return false;
@@ -334,8 +338,8 @@ vidOk:
 	m_cursor_arrow->init("../res/textures/gui/cursors1.png", v2f(60.f, 61.f), v2i(17, 11), v2i(75, 70));
 	m_activeCursor = m_cursor_arrow;
 	
-	m_gameCursorLimits.x = m_window->m_currentSize.x - 20;
-	m_gameCursorLimits.y = m_window->m_currentSize.y - 20;
+	m_gameCursorLimits.x = f32(m_window->m_currentSize.x - 20);
+	m_gameCursorLimits.y = f32(m_window->m_currentSize.y - 20);
 	m_gameCursorPosition.x = m_screenHalfSize.x;
 	m_gameCursorPosition.y = m_screenHalfSize.y;
 
@@ -381,6 +385,9 @@ vidOk:
 	m_GUIExitButton->m_offset.set(50.f, 100.f);
 	m_GUIExitButton->SetVisible(false);
 	m_GUIExitButton->m_onRelease = ExitButton_onRelease;
+
+	m_structureTest = new GameStructure;
+	m_structureTest->init(7,20, 7,5, "../res/structs/test.png");
 
 	return true;
 }
@@ -433,8 +440,8 @@ void Game::Run()
 			break;
 		case yySystemState::Run:
 		{
-			m_gameCursorPosition.x += m_inputContext->m_mouseDelta.x * 1.9;
-			m_gameCursorPosition.y += m_inputContext->m_mouseDelta.y * 1.9;
+			m_gameCursorPosition.x += m_inputContext->m_mouseDelta.x * 1.9f;
+			m_gameCursorPosition.y += m_inputContext->m_mouseDelta.y * 1.9f;
 
 			f32  spriteCameraMoveSpeed = 1000.f;
 			f32  spriteCameraScaleSpeed = 1.f;

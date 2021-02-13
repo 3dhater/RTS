@@ -12,6 +12,7 @@ class Game
 	yySprite* m_spriteGridRed;
 	yySprite* m_spriteGridBlue;
 
+	GameStructure* m_structureTest;
 
 	Map* m_map;
 	f32					m_screenRectRadius;

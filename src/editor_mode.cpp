@@ -13,6 +13,7 @@ MapSprite*			g_currentMapSprite = 0;
 
 bool g_isNewMapWindow = false;
 bool g_isEditWalls = false;
+bool g_isAddTestStruct = false;
 
 void Game::EditorStep(f32 dt)
 {
@@ -71,6 +72,10 @@ void Game::EditorStep(f32 dt)
 							g_isEditWalls = false;
 						}
 					}
+				}
+				if (ImGui::Button("Add test structure"))
+				{
+					g_isAddTestStruct = true;
 				}
 				ImGui::EndTabItem();
 			}
@@ -206,6 +211,15 @@ void Game::EditorStep(f32 dt)
 				}
 			}
 		}
+
+		m_map->SortRenderSprites();
+		for (u16 i = 0; i < m_map->m_renderSprites.m_size; ++i)
+		{
+			auto & rn = m_map->m_renderSprites.m_data[i];
+			rn.m_sprite->m_objectBase.m_globalMatrix[3].x = rn.m_position.x;
+			rn.m_sprite->m_objectBase.m_globalMatrix[3].y = rn.m_position.y;
+			m_gpu->DrawSprite(rn.m_sprite);
+		}
 	}
 	
 	if (m_inputContext->m_isLMBHold && g_isEditWalls)
@@ -232,11 +246,11 @@ void Game::EditorStep(f32 dt)
 	//	int ii = 0;
 		for (int y = 0; y < m_map->m_cellsLeftY; ++y)
 		{
-			s32 indexY = y + m_map->m_firstCellIndexY;
+			s32 indexY = y + m_map->m_screenCellLT.y;
 
 			for (int x = 0; x < m_map->m_cellsLeftX; ++x)
 			{
-				s32 indexX = x + m_map->m_firstCellIndexX;
+				s32 indexX = x + m_map->m_screenCellLT.x;
 
 			/*	if(ii == 0)
 				{
@@ -264,29 +278,107 @@ void Game::EditorStep(f32 dt)
 			currPos.y += GAME_MAP_GRID_SIZE;
 			currPos.x = beginPos.x;
 		}
-		/*auto sprite = g_spriteGrid;
-		auto beginPos = *m_spriteCameraPosition - m_screenHalfSize;
-
-		if (beginPos.x != 0.f)
-			beginPos.x -= (f32)((int)beginPos.x % (int)GAME_MAP_GRID_SIZE);
-		if (beginPos.y != 0.f)
-			beginPos.y -= (f32)((int)beginPos.y % (int)GAME_MAP_GRID_SIZE);
-
-		auto currPos = beginPos;
-		for (int h = 0, hsz = (m_screenHalfSize.y*2.f) / GAME_MAP_GRID_SIZE; h < hsz; ++h)
-		{
-			for (int w = 0, wsz = (m_screenHalfSize.x*2.f) / GAME_MAP_GRID_SIZE; w < wsz; ++w)
-			{
-				sprite->m_objectBase.m_globalMatrix[3].x = currPos.x;
-				sprite->m_objectBase.m_globalMatrix[3].y = currPos.y;
-				m_gpu->DrawSprite(sprite);
-
-				currPos.x += GAME_MAP_GRID_SIZE;
-			}
-			currPos.y += GAME_MAP_GRID_SIZE;
-			currPos.x = beginPos.x;
-		}*/
 	}
+
+	if (g_isAddTestStruct)
+	{
+		auto spr = m_structureTest->m_sprite;
+
+		auto pos = m_map->GetSnapPosition(m_gameCursorPosition);
+		//static v2f old_pos = pos;
+		
+		s32 CellIndexX = 0;
+		s32 CellIndexY = 0;
+		m_map->GetCellInds(CellIndexX, CellIndexY, pos);
+		
+		// определение выхода за пределы карты
+		s32 cellsLeftX = (m_map->m_cellsX - CellIndexX);
+		s32 cellsLeftY = (m_map->m_cellsY - CellIndexY);
+
+
+		if (cellsLeftX <= m_structureTest->m_siteSizeX)
+		{
+			pos.x -= (m_structureTest->m_siteSizeX - cellsLeftX+1) * GAME_MAP_GRID_SIZE;
+			// нужено будет делать повторно GetCellInds
+		}
+		if (cellsLeftY <= 0)
+		{
+			pos.y += (cellsLeftY-1) * GAME_MAP_GRID_SIZE;
+		}
+		else if (cellsLeftY > m_map->m_cellsY - m_structureTest->m_siteSizeY)
+		{
+			pos.y += (cellsLeftY - (m_map->m_cellsY - m_structureTest->m_siteSizeY)) * GAME_MAP_GRID_SIZE;
+		}
+
+		spr->m_objectBase.m_globalMatrix[3].x = pos.x;
+		spr->m_objectBase.m_globalMatrix[3].y = pos.y;
+		m_gpu->DrawSprite(spr);
+
+		m_spriteGridBlue->m_objectBase.m_globalMatrix[3].x = pos.x;
+		m_spriteGridBlue->m_objectBase.m_globalMatrix[3].y = pos.y;
+		m_gpu->DrawSprite(m_spriteGridBlue);
+
+
+		m_map->GetCellInds(CellIndexX, CellIndexY, pos);
+
+
+		s32 cix = CellIndexX;
+		s32 ciy = CellIndexY;
+		bool good = true;
+		for (u32 y = 0; y <= m_structureTest->m_siteSizeY; ++y)
+		{
+			for (u32 x = 0; x <= m_structureTest->m_siteSizeX; ++x)
+			{
+				if ((m_map->m_cells[ciy][cix].m_flags & MapCell::flag_structure)
+					|| (m_map->m_cells[ciy][cix].m_flags & MapCell::flag_wall))
+				{
+					good = false;
+
+					auto cellPos = m_map->GetCellPosition(cix, ciy);
+
+					m_spriteGridRed->m_objectBase.m_globalMatrix[3].x = cellPos.x;
+					m_spriteGridRed->m_objectBase.m_globalMatrix[3].y = cellPos.y;
+					m_gpu->DrawSprite(m_spriteGridRed);
+				}
+				++cix;
+			}
+			--ciy;
+			if (ciy < 0)
+			{
+				break;
+			}
+			cix = CellIndexX;
+		}
+		if (good)
+		{
+			if (m_inputContext->m_isLMBDown)
+			{
+				cix = CellIndexX;
+				ciy = CellIndexY;
+
+				GameStructureNode* newStruct = new GameStructureNode;
+				newStruct->m_struct = m_structureTest;
+				newStruct->m_position = pos;
+				m_map->AddStructure(newStruct);
+
+				for (u32 y = 0; y <= m_structureTest->m_siteSizeY; ++y)
+				{
+					for (u32 x = 0; x <= m_structureTest->m_siteSizeX; ++x)
+					{
+						m_map->m_cells[ciy][cix].m_flags |= MapCell::flag_structure;
+						++cix;
+					}
+					--ciy;
+					if (ciy < 0)
+					{
+						break;
+					}
+					cix = CellIndexX;
+				}
+			}
+		}
+	}
+
 
 	if (g_currentMapSprite)
 	{

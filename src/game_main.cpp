@@ -12,7 +12,7 @@ v2f GetSpriteSize(yySprite* sprite)
 	return v2f((f32)size.x, (f32)size.y);
 }
 
-yySprite* GetSprite(const char* file) 
+yySprite* GetSprite(const char* file, u8 pivotPosition ) 
 {
 	for (u16 i = 0, sz = g_game->m_spriteCache->m_cache.size(); i < sz; ++i) {
 		if (strcmp(g_game->m_spriteCache->m_cache[i].m_path.data(), file) == 0) {
@@ -22,7 +22,7 @@ yySprite* GetSprite(const char* file)
 	yyResource* texture = yyGetTextureResource(file, false, false, true);
 	v2i textureSize;
 	yyGetTextureSize(texture, &textureSize);
-	yySprite* newSprite = yyCreateSprite(v4f(0.f, 0.f, (f32)textureSize.x, (f32)textureSize.y), texture, true);
+	yySprite* newSprite = yyCreateSprite(v4f(0.f, 0.f, (f32)textureSize.x, (f32)textureSize.y), texture, pivotPosition);
 	SpriteCacheNode n;
 	n.m_path = file;
 	n.m_sprite = newSprite;

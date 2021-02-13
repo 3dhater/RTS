@@ -26,7 +26,6 @@
 #include "scene/camera.h"
 #include "scene/sprite.h"
 
-#include "Map.h"
 
 
 
@@ -34,7 +33,10 @@ void EditorStep(f32 dt);
 void GameStep(f32 dt);
 
 v2f GetSpriteSize(yySprite* sprite);
-yySprite* GetSprite(const char* file);
+yySprite* GetSprite(const char* file, u8 spritePosition = 0);
+
+#include "Map.h"
+
 struct SpriteCacheNode 
 {
 	yyStringA m_path;
