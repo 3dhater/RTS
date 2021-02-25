@@ -27,11 +27,6 @@
 #include "scene/sprite.h"
 
 
-
-
-void EditorStep(f32 dt);
-void GameStep(f32 dt);
-
 v2f GetSpriteSize(yySprite* sprite);
 yySprite* GetSprite(const char* file, u8 spritePosition = 0);
 
@@ -71,6 +66,22 @@ public:
 	}
 
 	yySprite* m_sprite;
+};
+
+
+class GameFaction
+{
+public:
+	GameFaction()
+	{
+		m_color = ColorWhite;
+	}
+	~GameFaction()
+	{
+
+	}
+
+	yyColor m_color;
 };
 
 #endif

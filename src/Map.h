@@ -3,13 +3,15 @@
 
 #include <Windows.h>
 
-struct MapSprite
+class GameStructure;
+class GamePlayer;
+struct MapBGSprite
 {
-	MapSprite() {
+	MapBGSprite() {
 		m_spritePtr = 0;
 		m_gui_text = 0;
 	}
-	~MapSprite() {
+	~MapBGSprite() {
 		if (m_gui_text)
 			yyGUIDeleteElement(m_gui_text);
 	}
@@ -36,90 +38,26 @@ struct MapCell
 
 	enum flag
 	{
-		flag_clear = 1,
-		flag_wall = 2,
-		flag_structure  = 4
+		flag_clear =		BIT(0),
+		flag_wall =			BIT(1),
+		flag_structure = BIT(2),
+
+		// каждый игрок должен уметь строить где-то, но не сразу везде.
+		// зона должна быть доступна или закрываться при постройке или 
+		//  при уничтожении здания.
+		// Видимость карты так-же строится на основе ячеек карты. У каждого
+		//  игрока своя видимость.
+		flag_p1_buildZone = BIT(3),
+		flag_p1_view =	BIT(4),
+		flag_p2_buildZone = BIT(5),
+		flag_p2_view = BIT(6)
+
 	};
 };
 #pragma pack(pop)
 
-enum class GameStructureType
-{
-	test
-};
 
-#pragma pack(push,1)
-struct GameStructure
-{
-	GameStructure()
-	{
-		m_field = 0;
-		m_fullSizeX = 0;
-		m_fullSizeY = 0;
-		m_sprite = 0;
-	}
-	~GameStructure()
-	{
-		if (m_field)
-		{
-			for (int y = 0; y < m_fullSizeY; ++y)
-			{
-				delete[] m_field[y];
-			}
-			delete[] m_field;
-		}
-	}
 
-	void init(int full_x, int full_y, int site_x, int site_y, const char* spritePath)
-	{
-		m_fullSizeX = full_x;
-		m_fullSizeY = full_y;
-
-		m_siteSizeX = site_x;
-		m_siteSizeY = site_y;
-
-		m_field = new u8*[site_y];
-		for (int y = 0; y < site_y; ++y)
-		{
-			m_field[y] = new u8[site_x];
-			for (int x = 0; x < site_x; ++x)
-			{
-				m_field[y][x] = MapCell::flag::flag_structure;
-			}
-		}
-
-		m_sprite = GetSprite(spritePath, 6);
-	}
-
-	// bounding box for sprite in cells
-	u8 m_fullSizeX;
-	u8 m_fullSizeY;
-
-	// building site size in cells
-	u8 m_siteSizeX;
-	u8 m_siteSizeY;
-
-	u8** m_field;
-	yySprite * m_sprite;
-};
-#pragma pack(pop)
-
-// GameStructure описывает уникальную структуру при старте игры
-// при добавлении зданий, нужно добавлять некие единицы, описывающие это здание
-//  тип здания - GameStructure
-//  позиция
-//  кому оно принадлежит
-//  возможно уровень ХП
-
-struct GameStructureNode
-{
-	GameStructureNode()
-	{
-		m_struct = 0;
-	}
-	GameStructure * m_struct;
-	v2f m_position;
-};
 class Map
 {
 public:
@@ -127,6 +65,7 @@ public:
 	~Map();
 	void Generate();
 	void Destroy();
+	void InitFromFile(const char*);
 
 	f32 m_mapSizeX;
 	f32 m_mapSizeY;
@@ -137,6 +76,7 @@ public:
 	v2f m_rightBottom;
 
 	MapCell** m_cells;
+
 	s32 m_cellsX;
 	s32 m_cellsY;
 	// позицию каждой ячейки можно вычислить зная позицию левой верхней ячейки
@@ -155,26 +95,25 @@ public:
 	void FindCellPosition();
 	void GetCellInds(s32& x, s32& y, const v2f& position);
 	
-	MapCell* GetCellUnderCursor(const v2f& gameCursorPosition);
-	v2f GetSnapPosition(const v2f& gameCursorPosition);
+	MapCell* GetCell(const v2f& coord);
+	v2f GetSnapPosition(const v2f& pos);
 	v2f GetCellPosition(s32 x, s32 y);
+
+	void SetGridFlag(const v2f& position, f32 radius, u32 flag);
 	
 	yySprite*	m_bgSprite;
 	f32			m_bgSpriteRadius;
 
 	yyArraySmall<v2f>		m_bgSpritePositions;
-	yyListFast<MapSprite*>	m_bgObjects;
+	yyListFast<MapBGSprite*>	m_bgObjects;
+	MapBGSprite* GetNewMapBGSprite(const wchar_t* name, const char* fn);
 	
-	void AddStructure(GameStructureNode*);
-	yyListFast<GameStructureNode*>	m_structs;
+	void AddStructure(GameStructure * strct, const v2f& position);
+	
 
-	struct renderNode
-	{
-		yySprite* m_sprite;
-		v2f m_position;
-	};
-	yyArraySimple<renderNode> m_renderSprites;
-	void SortRenderSprites();
+
+	v2f m_player1Position;
+	v2f m_player2Position;
 };
 
 #endif

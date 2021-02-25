@@ -1,5 +1,7 @@
 ﻿#include "RTS.h"
 #include "Game.h"
+#include "Struct.h"
+#include "Player.h"
 
 extern Game*		g_game;
 
@@ -17,9 +19,9 @@ Map::~Map()
 	Destroy();
 }
 
-v2f Map::GetSnapPosition(const v2f& gameCursorPosition)
+v2f Map::GetSnapPosition(const v2f& position)
 {
-	auto pos = gameCursorPosition + *g_game->m_spriteCameraPosition - g_game->m_screenHalfSize;
+	auto pos = position;// +*g_game->m_spriteCameraPosition - g_game->m_screenHalfSize;
 	if (pos.x < 0.f)
 		pos.x = 0.f;
 
@@ -27,9 +29,9 @@ v2f Map::GetSnapPosition(const v2f& gameCursorPosition)
 		pos.y = 0.f;
 
 	if (pos.x != 0.f)
-		pos.x -= (f32)((int)pos.x % (int)GAME_MAP_GRID_SIZE);
+		pos.x -= (f32)((int)std::floor(pos.x) % (int)GAME_MAP_GRID_SIZE);
 	if (pos.y != 0.f)
-		pos.y -= (f32)((int)pos.y % (int)GAME_MAP_GRID_SIZE);
+		pos.y -= (f32)((int)std::floor(pos.y) % (int)GAME_MAP_GRID_SIZE);
 	return pos;
 }
 
@@ -52,9 +54,10 @@ v2f Map::GetCellPosition(s32 x, s32 y)
 	return pos;
 }
 
-MapCell * Map::GetCellUnderCursor(const v2f& gameCursorPosition)
+MapCell * Map::GetCell(const v2f& coord)
 {
-	auto pos = GetSnapPosition(gameCursorPosition);
+	auto world_position = coord +*g_game->m_spriteCameraPosition - g_game->m_screenHalfSize;
+	auto pos = GetSnapPosition(world_position);
 
 	s32 CellIndexX = 0;
 	s32 CellIndexY = 0;
@@ -67,10 +70,86 @@ MapCell * Map::GetCellUnderCursor(const v2f& gameCursorPosition)
 	return &m_cells[CellIndexY][CellIndexX];
 }
 
+void Map::SetGridFlag(const v2f& _position, f32 radius, u32 flag)
+{
+	v2f position = _position;
 
+	auto pos = GetSnapPosition(position);
+	s32 CellIndexX = 0;
+	s32 CellIndexY = 0;
+	GetCellInds(CellIndexX, CellIndexY, pos);
+
+	s32 gridRadius = (s32)radius / (s32)GAME_MAP_GRID_SIZE;
+
+	s32 cix = CellIndexX;
+	s32 ciy = CellIndexY;
+
+	for (s32 y = 0; y < gridRadius; ++y)
+	{
+		for (s32 x = 0; x < gridRadius; ++x)
+		{
+			m_cells[ciy][cix].m_flags |= flag;
+
+			++cix;
+			if (cix == m_cellsX) break;
+		}
+		++ciy;
+		if (ciy == m_cellsY) break;
+		cix = CellIndexX;
+	}
+
+	cix = CellIndexX;
+	ciy = CellIndexY;
+	for (s32 y = 0; y < gridRadius; ++y)
+	{
+		for (s32 x = 0; x < gridRadius; ++x)
+		{
+			m_cells[ciy][cix].m_flags |= flag;
+
+			++cix;
+			if (cix == m_cellsX) break;
+		}
+		--ciy;
+		if (ciy < 0) break;
+		cix = CellIndexX;
+	}
+
+	cix = CellIndexX;
+	ciy = CellIndexY;
+	for (s32 y = 0; y < gridRadius; ++y)
+	{
+		for (s32 x = 0; x < gridRadius; ++x)
+		{
+			m_cells[ciy][cix].m_flags |= flag;
+
+			--cix;
+			if (cix < 0) break;
+		}
+		--ciy;
+		if (ciy < 0) break;
+		cix = CellIndexX;
+	}
+
+	cix = CellIndexX;
+	ciy = CellIndexY;
+	for (s32 y = 0; y < gridRadius; ++y)
+	{
+		for (s32 x = 0; x < gridRadius; ++x)
+		{
+			m_cells[ciy][cix].m_flags |= flag;
+
+			--cix;
+			if (cix == m_cellsX) break;
+		}
+		++ciy;
+		if (ciy == m_cellsY) break;
+		cix = CellIndexX;
+	}
+}
 void Map::FindCellPosition()
 {
-	m_cellPosition = GetSnapPosition(v2f());
+	auto world_position = v2f() + *g_game->m_spriteCameraPosition - g_game->m_screenHalfSize;
+	m_cellPosition = GetSnapPosition(world_position);
 
 	GetCellInds(m_screenCellLT.x, m_screenCellLT.y, m_cellPosition);
 	
@@ -86,6 +165,91 @@ void Map::FindCellPosition()
 	//printf("[%i][%i]\t[%i][%i]\n", m_firstCellIndexY, m_firstCellIndexX, m_cellsLeftY, m_cellsLeftX);
 }
 
+MapBGSprite* Map::GetNewMapBGSprite(const wchar_t* name, const char* fn)
+{
+	static u32 nameCounter = 0;
+
+	auto newSprite = GetSprite(fn, 8);
+	if (!newSprite)
+		return nullptr;
+
+	MapBGSprite* newMapSprite = new MapBGSprite;
+
+#ifdef YY_DEBUG
+	newMapSprite->m_name = name;
+	newMapSprite->m_name += "_";
+	newMapSprite->m_name += nameCounter++;
+	yyStringW wstr;
+	wstr += newMapSprite->m_name.data();
+	newMapSprite->m_gui_text = yyGUICreateText(v2f(), g_game->m_defaultFont, wstr.data());
+#endif
+
+	newMapSprite->m_spritePtr = newSprite;
+
+	v2i textureSize;
+	yyGetTextureSize(newSprite->m_texture, &textureSize);
+	newMapSprite->m_radius = v2f((f32)textureSize.x, (f32)textureSize.y).distance(v2f());
+
+	m_bgObjects.push_back(newMapSprite);
+	return newMapSprite;
+}
+void Map::InitFromFile(const char* fn)
+{
+	FILE * f = fopen(fn, "rb");
+
+	fread(&g_game->m_mapGenSizeX, sizeof(s32), 1, f);
+	fread(&g_game->m_mapGenSizeY, sizeof(s32), 1, f);
+
+	Generate();
+
+	fread(&m_player1Position, sizeof(v2f), 1, f);
+	fread(&m_player2Position, sizeof(v2f), 1, f);
+
+	m_player1Position = this->GetSnapPosition(m_player1Position);
+	m_player2Position = this->GetSnapPosition(m_player2Position);
+
+	u32 bgObjectsCount = 0;
+	fread(&bgObjectsCount, sizeof(u32), 1, f);
+	for (u32 i = 0; i < bgObjectsCount; ++i)
+	{
+		f32 radius = 0.f;
+		fread(&radius, sizeof(f32), 1, f);
+
+		v2f spritePosition;
+		fread(&spritePosition, sizeof(v2f), 1, f);
+
+		std::string newString;
+		for (u32 o = 0; o < 1000; ++o)
+		{
+			u8 chr = 0;
+			fread(&chr, 1, 1, f);
+
+			if (chr != 0)
+				newString += (char)chr;
+			else
+				break;
+		}
+
+		auto newBGObject = GetNewMapBGSprite(L"sprite", newString.data());
+		newBGObject->m_radius = radius;
+		newBGObject->m_spritePosition = spritePosition;
+	}
+
+	for (int y = 0; y < m_cellsY; ++y)
+	{
+		for (int x = 0; x < m_cellsX; ++x)
+		{
+			fread(&m_cells[y][x], sizeof(MapCell), 1, f);
+		}
+	}
+
+	fclose(f);
+
+	g_game->CameraSetPosition(m_player1Position);
+	this->FindCellPosition();
+	this->SetGridFlag(m_player1Position, 500.f, MapCell::flag_p1_view);
+	this->SetGridFlag(m_player1Position, 250.f, MapCell::flag_p1_buildZone);
+}
 void Map::Generate()
 {
 	Destroy();
@@ -157,6 +321,8 @@ void Map::Generate()
 	m_cells[12][12].m_flags |= MapCell::flag_wall;
 	FindCellPosition();
 
+	g_game->m_cameraLimits.x = m_mapSizeX;
+	g_game->m_cameraLimits.y = m_mapSizeY;
 }
 
 void Map::Destroy()
@@ -202,49 +368,57 @@ void Map::Destroy()
 			}
 		}*/
 	}
-	{
+	/*{
 		for (auto & o : m_structs)
 		{
 			delete o.m_data;
 		}
 		m_structs.clear();
-	}
+	}*/
 }
 
-void Map::AddStructure(GameStructureNode* node)
+//void Map::AddStructure(GameStructure * strct, const v2f& position, GamePlayer* player, s32 maxHealth)
+//{
+//	//player->m_structureBase
+//	player->m_structs.push_back(strct);
+//
+//	strct->m_position = position;
+//	strct->m_player = player;
+//	strct->m_rect.x = position.x;
+//	strct->m_rect.y = position.y - (strct->m_fullSizeY * GAME_MAP_GRID_SIZE);
+//	strct->m_rect.z = position.x + (strct->m_fullSizeX * GAME_MAP_GRID_SIZE);
+//	strct->m_rect.w = position.y;
+//	strct->m_healthMax = maxHealth;
+//	strct->m_healthCurr = maxHealth;
+//	
+//	strct->init();
+//
+//	m_structs.push_back(strct);
+//}
+
+void Map::AddStructure(GameStructure * strct, const v2f& pos)
 {
-	m_structs.push_back(node);
-}
+	s32 CellIndexX = 0;
+	s32 CellIndexY = 0;
+	GetCellInds(CellIndexX, CellIndexY, pos);
+	
+	//++CellIndexX;
 
-void Map::SortRenderSprites()
-{
-	static renderNode rn;
-	m_renderSprites.clear();
-	for (auto & o : m_structs)
+	auto cix = CellIndexX;
+	auto ciy = CellIndexY;
+
+	for (u32 y = 0; y < strct->m_siteSizeY; ++y)
 	{
-		s32 CellIndexX = 0;
-		s32 CellIndexY = 0;
-		GetCellInds(CellIndexX, CellIndexY, o.m_data->m_position);
-
-		if ((CellIndexX + o.m_data->m_struct->m_fullSizeX) - m_screenCellLT.x < 0) continue;
-		if (CellIndexY - m_screenCellLT.y < 0) continue;
-		
-		if (CellIndexX > m_screenCellRB.x) continue;
-		if ((CellIndexY - o.m_data->m_struct->m_fullSizeY) > m_screenCellRB.y) continue;
-
-		rn.m_sprite = o.m_data->m_struct->m_sprite;
-		rn.m_position = o.m_data->m_position;
-		m_renderSprites.push_back(rn);
-	}
-
-	struct _pred
-	{
-		bool operator() (const Map::renderNode& a, const Map::renderNode& b) const
+		for (u32 x = 0; x < strct->m_siteSizeX; ++x)
 		{
-			return a.m_position.y > b.m_position.y;
+			m_cells[ciy][cix].m_flags |= MapCell::flag_structure;
+			++cix;
 		}
-	}_p;
-
-	m_renderSprites.sort_insertion(_p);
-
+		--ciy;
+		if (ciy < 0)
+		{
+			break;
+		}
+		cix = CellIndexX;
+	}
 }

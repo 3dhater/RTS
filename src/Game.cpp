@@ -6,23 +6,33 @@
 
 #include "RTS.h"
 #include "Game.h"
+#include "Player.h"
+#include "Struct.h"
+#include "StructBase.h"
 
 Game*		g_game = nullptr;
 
 void EnterGameMenu()
 {
 	g_game->m_isPause = true;
-	g_game->m_GUIMenuBG->SetVisible(true);
-	g_game->m_GUIContinueButton->SetVisible(true);
-	g_game->m_GUIExitButton->SetVisible(true);
+	if(g_game->m_GUIMenuBG)
+		g_game->m_GUIMenuBG->SetVisible(true);
+	if(g_game->m_GUIContinueButton)
+		g_game->m_GUIContinueButton->SetVisible(true);
+	if(g_game->m_GUIExitButton)
+		g_game->m_GUIExitButton->SetVisible(true);
 }
 void LeaveGameMenu()
 {
 	g_game->m_isPause = false;
-	g_game->m_GUIMenuBG->SetVisible(false);
-	g_game->m_GUIContinueButton->SetVisible(false);
-	g_game->m_GUIExitButton->SetVisible(false);
-	g_game->m_GUIPlayPauseButton->m_isChecked = false;
+	if (g_game->m_GUIMenuBG)
+		g_game->m_GUIMenuBG->SetVisible(false);
+	if(g_game->m_GUIContinueButton)
+		g_game->m_GUIContinueButton->SetVisible(false);
+	if(g_game->m_GUIExitButton)
+		g_game->m_GUIExitButton->SetVisible(false);
+	if(g_game->m_GUIPlayPauseButton)
+		g_game->m_GUIPlayPauseButton->m_isChecked = false;
 }
 
 void PlayPauseButton_onRelease(yyGUIElement* elem, s32 m_id)
@@ -43,6 +53,15 @@ void ContinueButton_onRelease(yyGUIElement* elem, s32 m_id)
 void ExitButton_onRelease(yyGUIElement* elem, s32 m_id)
 {
 	yyQuit();
+}
+void TowerButton_onRelease(yyGUIElement* elem, s32 m_id)
+{
+	g_game->LeaveCreateMode();
+	g_game->EnterCreateMode(new GameStructureTower);
+}
+void HomeButton_onRelease(yyGUIElement* elem, s32 m_id)
+{
+	g_game->ToHome();
 }
 
 void updateInputContext() // call before all callbacks
@@ -179,8 +198,19 @@ void log_onInfo(const char* message)
 
 Game::Game()
 {
-	m_structureTest = 0;
+	m_createModeStructure = 0;
 
+	m_player1 = 0;
+	m_player2 = 0;
+
+	m_selectedStruct = 0;
+
+//	m_structureTest = 0;
+//	m_structureBase = 0;
+	m_activeCursor = 0;
+
+	m_canPlaceStructureOnMap = false;
+		 
 	m_mapGenSizeX = 10;
 	m_mapGenSizeY = 10;
 	m_isPause = false;
@@ -196,13 +226,24 @@ Game::Game()
 	m_spriteGridWhite = nullptr;
 	m_spriteGridRed = nullptr;
 	m_spriteGridBlue = nullptr;
+	m_spriteGridBlack = 0;
+	m_spriteGridGreen = 0;
+
+	m_GUIContinueButton = 0;
+	m_GUIExitButton = 0;
+	m_GUIMenuBG = 0;
+	m_GUIPlayPauseButton = 0;
 
 	g_game = this;
 }
 
 Game::~Game()
 {
-	if (m_structureTest) delete m_structureTest;
+//	if (m_structureTest) delete m_structureTest;
+//	if (m_structureBase) delete m_structureBase;
+	if (m_player1) delete m_player1;
+	if (m_player2) delete m_player2;
+
 
 	if (m_useImgui)
 	{
@@ -217,6 +258,8 @@ Game::~Game()
 	if (m_spriteGridWhite) yyDestroy(m_spriteGridWhite);
 	if (m_spriteGridRed) yyDestroy(m_spriteGridRed);
 	if (m_spriteGridBlue) yyDestroy(m_spriteGridBlue);
+	if (m_spriteGridBlack) yyDestroy(m_spriteGridBlack);
+	if (m_spriteGridGreen) yyDestroy(m_spriteGridGreen);
 	if (m_window) yyDestroy(m_window);
 	if (m_engineContext) yyDestroy(m_engineContext);
 	if (m_inputContext) yyDestroy(m_inputContext);
@@ -298,7 +341,7 @@ bool Game::Init(std::vector<yyStringA>& cmdLineArr)
 vidOk:
 
 	m_gpu = yyGetVideoDriverAPI();
-	m_gpu->SetClearColor(0.3f, 0.3f, 0.74f, 1.f);
+	m_gpu->SetClearColor(0.f, 0.f, 0.f, 1.f);
 	m_useImgui = m_isEditorMode;
 	if (m_useImgui)
 	{
@@ -317,9 +360,11 @@ vidOk:
 	title += m_gpu->GetVideoDriverName();
 	m_window->SetTitle(title.data());
 
-	m_spriteGridWhite = yyCreateSprite(v4f(0.f, 0.f, 10.f, 10.f), yyGetTextureResource("../res/editor/grid_white.png", false, false, true), false);
-	m_spriteGridRed = yyCreateSprite(v4f(0.f, 0.f, 10.f, 10.f), yyGetTextureResource("../res/editor/grid_red.png", false, false, true), false);
-	m_spriteGridBlue = yyCreateSprite(v4f(0.f, 0.f, 10.f, 10.f), yyGetTextureResource("../res/editor/grid_blue.png", false, false, true), false);
+	m_spriteGridWhite = yyCreateSprite(v4f(0.f, 0.f, 10.f, 10.f), yyGetTextureResource("../res/editor/grid_white.png", false, false, true), 6);
+	m_spriteGridRed = yyCreateSprite(v4f(0.f, 0.f, 10.f, 10.f), yyGetTextureResource("../res/editor/grid_red.png", false, false, true), 6);
+	m_spriteGridBlue = yyCreateSprite(v4f(0.f, 0.f, 10.f, 10.f), yyGetTextureResource("../res/editor/grid_blue.png", false, false, true), 6);
+	m_spriteGridBlack = yyCreateSprite(v4f(0.f, 0.f, 10.f, 10.f), yyGetTextureResource("../res/editor/grid_black.png", false, false, true), 6);
+	m_spriteGridGreen = yyCreateSprite(v4f(0.f, 0.f, 10.f, 10.f), yyGetTextureResource("../res/editor/grid_green.png", false, false, true), 6);
 
 	m_spriteCameraPosition = m_gpu->GetSpriteCameraPosition();
 	auto spriteCameraScale = m_gpu->GetSpriteCameraScale();
@@ -359,7 +404,6 @@ vidOk:
 		rc.bottom = m_window->m_currentSize.y;
 		ClipCursor(&rc);
 	}
-	//	ShowCursor(FALSE);
 	m_gpu->UseBlend(false);
 
 	m_GUIMenuBG = yyGUICreatePictureBox(v4f(0.f, 0.f, 512.f, 512.f), yyGetTextureResource("../res/gui/menubg.png", false, false, true), -1);
@@ -375,21 +419,196 @@ vidOk:
 	m_GUIContinueButton = yyGUICreateButton(v4f(0.f, 0.f, 250.f, 40.f), yyGetTextureResource("../res/gui/continue1.png", false, false, true), -1);
 	m_GUIContinueButton->SetMouseHoverTexture(yyGetTextureResource("../res/gui/continue2.png", false, false, true));
 	m_GUIContinueButton->SetMouseClickTexture(yyGetTextureResource("../res/gui/continue3.png", false, false, true));
-	m_GUIContinueButton->m_offset.set(50.f, 50.f);
+	m_GUIContinueButton->SetOffset(v2f(50.f, 50.f));
 	m_GUIContinueButton->SetVisible(false);
 	m_GUIContinueButton->m_onRelease = ContinueButton_onRelease;
 
 	m_GUIExitButton = yyGUICreateButton(v4f(0.f, 0.f, 250.f, 40.f), yyGetTextureResource("../res/gui/exit1.png", false, false, true), -1);
 	m_GUIExitButton->SetMouseHoverTexture(yyGetTextureResource("../res/gui/exit2.png", false, false, true));
 	m_GUIExitButton->SetMouseClickTexture(yyGetTextureResource("../res/gui/exit3.png", false, false, true));
-	m_GUIExitButton->m_offset.set(50.f, 100.f);
+	m_GUIExitButton->SetOffset(v2f(50.f, 100.f));
 	m_GUIExitButton->SetVisible(false);
 	m_GUIExitButton->m_onRelease = ExitButton_onRelease;
 
-	m_structureTest = new GameStructure;
-	m_structureTest->init(7,20, 7,5, "../res/structs/test.png");
+
+	
+	
+	//m_structureTest = new GameStructure;
+	//m_structureTest->init(7,20, 7,5, "../res/structs/test.png", "../res/structs/testBG.png");
+
+//	m_structureBase = new GameStructure;
+//	m_structureBase->init(16, 16, 16, 10, "../res/structs/base.png", "../res/structs/baseBG.png");
+
+	m_player1 = new GamePlayer;
+	m_player2 = new GamePlayer;
+
+	if (!m_isEditorMode)
+	{
+		ShowCursor(FALSE);
+		m_map->InitFromFile("../res/maps/1.rtsmap");
+		
+		auto toolBG = yyGUICreatePictureBox(v4f(0.f, m_window->m_currentSize.y - 160.f, m_window->m_currentSize.x, m_window->m_currentSize.y), yyGetTextureResource("../res/gui/toolbg.png", false, false, true), -1);
+		toolBG->IgnoreInput(true);
+	
+		auto homeButton = yyGUICreateButton(v4f(0.f, m_window->m_currentSize.y - 160.f, 32.f, m_window->m_currentSize.y - 160.f + 32.f), yyGetTextureResource("../res/gui/home.png", false, false, true), -1);
+		homeButton->m_onRelease = HomeButton_onRelease;
+		
+		auto towerButton = yyGUICreateButton(
+			v4f(
+				80.f, m_window->m_currentSize.y - 150.f, 
+				80.f + 64.f, m_window->m_currentSize.y - 150.f + 64.f), 
+			yyGetTextureResource("../res/structs/towerGUI.png", false, false, true), -1);
+		towerButton->SetMouseHoverTexture(yyGetTextureResource("../res/structs/towerGUI2.png", false, false, true));
+		towerButton->SetVisible(true);
+		towerButton->m_onRelease = TowerButton_onRelease;
+
+		m_player2->m_isAI = true;
+
+		GameStructure * strct = new GameStructureBase;
+		m_player1->AddStructure(strct, m_map->m_player1Position, 1000);
+		m_map->AddStructure(strct, m_map->m_player1Position);
+
+		strct = new GameStructureBase;
+		m_player2->AddStructure(strct, m_map->m_player2Position, 1000);
+		m_map->AddStructure(strct, m_map->m_player2Position);
+	}
 
 	return true;
+}
+
+void Game::EnterCreateMode(GameStructure* newStructure)
+{
+	m_createModeStructure = newStructure;
+	m_createModeStructure->Init();
+}
+void Game::LeaveCreateMode()
+{
+	if (m_createModeStructure)
+	{
+		delete m_createModeStructure;
+		m_createModeStructure = 0;
+	}
+}
+
+v2f Game::GetCursorPositionInWorld()
+{
+	return m_gameCursorPositionWorld;
+	//return m_gameCursorPosition + *m_spriteCameraPosition - m_screenHalfSize;
+}
+
+void Game::DrawGround()
+{
+	for (u16 i = 0, sz = m_map->m_bgSpritePositions.size(); i < sz; ++i)
+	{
+		auto & spritePos = m_map->m_bgSpritePositions[i];
+		if ((m_spriteCameraPosition->distance(spritePos) - m_map->m_bgSpriteRadius) <= m_screenRectRadius)
+		{
+			m_map->m_bgSprite->m_objectBase.m_globalMatrix[3].x = spritePos.x;
+			m_map->m_bgSprite->m_objectBase.m_globalMatrix[3].y = spritePos.y;
+			m_gpu->DrawSprite(m_map->m_bgSprite);
+		}
+	}
+}
+
+void Game::SortRenderSprites()
+{
+	m_renderSprites.clear();
+
+	for (auto & o : m_player1->m_structs)
+	{
+		s32 CellIndexX = 0;
+		s32 CellIndexY = 0;
+		m_map->GetCellInds(CellIndexX, CellIndexY, o.m_data->m_position);
+
+		if ((CellIndexX + o.m_data->m_fullSizeX) - m_map->m_screenCellLT.x < 0) continue;
+		if (CellIndexY - m_map->m_screenCellLT.y < 0) continue;
+
+		if (CellIndexX > m_map->m_screenCellRB.x) continue;
+		if ((CellIndexY - o.m_data->m_fullSizeY) > m_map->m_screenCellRB.y) continue;
+
+		m_renderSprites.push_back(o.m_data);
+	}
+
+	for (auto & o : m_player2->m_structs)
+	{
+		s32 CellIndexX = 0;
+		s32 CellIndexY = 0;
+		m_map->GetCellInds(CellIndexX, CellIndexY, o.m_data->m_position);
+
+		if ((CellIndexX + o.m_data->m_fullSizeX) - m_map->m_screenCellLT.x < 0) continue;
+		if (CellIndexY - m_map->m_screenCellLT.y < 0) continue;
+
+		if (CellIndexX > m_map->m_screenCellRB.x) continue;
+		if ((CellIndexY - o.m_data->m_fullSizeY) > m_map->m_screenCellRB.y) continue;
+
+		m_renderSprites.push_back(o.m_data);
+	}
+
+	struct _pred
+	{
+		bool operator() (GameSpriteBase* a, GameSpriteBase* b) const
+		{
+			return a->m_position.y > b->m_position.y;
+		}
+	};
+
+	m_renderSprites.sort_insertion(_pred());
+
+}
+void Game::DrawVisibleSprites()
+{
+	SortRenderSprites();
+	/*for (u16 i = 0; i < m_renderSprites.m_size; ++i)
+	{
+		auto & rn = m_renderSprites.m_data[i];
+		if (rn.m_spriteBG)
+		{
+			rn.m_spriteBG->m_objectBase.m_globalMatrix[3].x = rn.m_position.x;
+			rn.m_spriteBG->m_objectBase.m_globalMatrix[3].y = rn.m_position.y;
+			m_gpu->DrawSprite(rn.m_spriteBG);
+		}
+	}*/
+	for (u16 i = 0; i < m_renderSprites.m_size; ++i)
+	{
+		m_renderSprites.m_data[i]->Draw();
+		/*auto & rn = m_renderSprites.m_data[i];
+		rn.m_sprite->m_objectBase.m_globalMatrix[3].x = rn.m_position.x;
+		rn.m_sprite->m_objectBase.m_globalMatrix[3].y = rn.m_position.y;
+		m_gpu->DrawSprite(rn.m_sprite);*/
+	}
+}
+void Game::DrawGroundSprites()
+{
+	for (auto & sp : m_map->m_bgObjects)
+	{
+#ifdef YY_DEBUG
+		sp.m_data->m_gui_text->SetVisible(false);
+#endif
+
+		auto sprite = sp.m_data->m_spritePtr;
+		auto & spritePos = sp.m_data->m_spritePosition;
+		f32 dist = m_spriteCameraPosition->distance(sp.m_data->m_spritePosition);
+		if ((dist - sp.m_data->m_radius) <= m_screenRectRadius)
+		{
+			sprite->m_objectBase.m_globalMatrix[3].x = spritePos.x;
+			sprite->m_objectBase.m_globalMatrix[3].y = spritePos.y;
+			m_gpu->DrawSprite(sprite);
+
+#ifdef YY_DEBUG
+			if (m_inputContext->isKeyHold(yyKey::K_LCTRL))
+			{
+				sp.m_data->m_gui_text->m_offset.x = spritePos.x + m_worldToScreenOffset.x;
+				sp.m_data->m_gui_text->m_offset.y = spritePos.y + m_worldToScreenOffset.y;
+				sp.m_data->m_gui_text->SetVisible(true);
+			}
+#endif
+		}
+	}
+}
+
+void Game::CameraSetPosition(const v2f& p)
+{
+	*m_spriteCameraPosition = p;
 }
 
 void Game::Run()
@@ -504,7 +723,7 @@ void Game::Run()
 			if (m_gameCursorPosition.x > m_gameCursorLimits.x) m_gameCursorPosition.x = m_gameCursorLimits.x;
 			if (m_gameCursorPosition.y > m_gameCursorLimits.y) m_gameCursorPosition.y = m_gameCursorLimits.y;
 
-			const f32 scroll_zone = 5.f;
+			const f32 scroll_zone = 2.f;
 			if (m_gameCursorPosition.x < scroll_zone)
 			{
 				m_spriteCameraPosition->x -= (spriteCameraMoveSpeed*2.f) * deltaTime;
@@ -542,6 +761,17 @@ void Game::Run()
 				m_map->FindCellPosition();
 			}
 
+			if (m_inputContext->isKeyHit(yyKey::K_ESCAPE))
+			{
+				if (m_isPause)
+				{
+					LeaveGameMenu();
+				}
+				else
+				{
+					EnterGameMenu();
+				}
+			}
 
 			if (m_inputContext->isKeyHold(yyKey::K_F12))
 			{
@@ -565,6 +795,12 @@ void Game::Run()
 			m_gpu->BeginDraw();
 			m_gpu->ClearAll();
 
+
+			m_worldToScreenOffset.x = -m_spriteCameraPosition->x + m_screenHalfSize.x;
+			m_worldToScreenOffset.y = -m_spriteCameraPosition->y + m_screenHalfSize.y;
+
+			m_gameCursorPositionWorld = m_gameCursorPosition + *m_spriteCameraPosition - m_screenHalfSize;
+
 			if (m_isEditorMode)
 				EditorStep(deltaTime);
 			else
@@ -575,9 +811,12 @@ void Game::Run()
 
 			v2f spriteCameraPositionSave = *m_spriteCameraPosition;
 			m_spriteCameraPosition->set(0.f, 0.f);
-			m_activeCursor->m_sprite->m_objectBase.m_globalMatrix[3].x = m_gameCursorPosition.x - m_screenHalfSize.x;
-			m_activeCursor->m_sprite->m_objectBase.m_globalMatrix[3].y = m_gameCursorPosition.y - m_screenHalfSize.y;
-			m_gpu->DrawSprite(m_activeCursor->m_sprite);
+			if (m_activeCursor)
+			{
+				m_activeCursor->m_sprite->m_objectBase.m_globalMatrix[3].x = m_gameCursorPosition.x - m_screenHalfSize.x;
+				m_activeCursor->m_sprite->m_objectBase.m_globalMatrix[3].y = m_gameCursorPosition.y - m_screenHalfSize.y;
+				m_gpu->DrawSprite(m_activeCursor->m_sprite);
+			}
 
 			*m_spriteCameraPosition = spriteCameraPositionSave;
 
@@ -608,4 +847,12 @@ void Game::Run()
 		m_rawInputCursorPosition.x = 0.f;
 		m_rawInputCursorPosition.y = 0.f;
 	}
+}
+
+void Game::ToHome()
+{
+	LeaveCreateMode();
+	CameraSetPosition(m_map->m_player1Position);
+	m_map->FindCellPosition();
+	m_selectedStruct = m_player1->GetBase();
 }

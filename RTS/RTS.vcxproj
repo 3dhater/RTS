@@ -93,6 +93,7 @@
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>E:\Code\YuYu\common;%(AdditionalIncludeDirectories);E:\Code\YuYu\libs\gl3w;E:\Code\YuYu\libs\imgui;E:\Code\YuYu\libs\imgui\backends</AdditionalIncludeDirectories>
+      <SDLCheck>false</SDLCheck>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -109,6 +110,7 @@
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>_DEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>E:\Code\YuYu\common;E:\Program Files %28x86%29\Microsoft DirectX SDK %28June 2010%29\Include;%(AdditionalIncludeDirectories);E:\Code\YuYu\libs\gl3w;E:\Code\YuYu\libs\imgui;E:\Code\YuYu\libs\imgui\backends</AdditionalIncludeDirectories>
+      <SDLCheck>false</SDLCheck>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -171,9 +173,16 @@
     <ClCompile Include="..\src\game_main.cpp" />
     <ClCompile Include="..\src\game_mode.cpp" />
     <ClCompile Include="..\src\Map.cpp" />
+    <ClCompile Include="..\src\Player.cpp" />
+    <ClCompile Include="..\src\StructBase.cpp" />
+    <ClCompile Include="..\src\StructTower.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\src\Game.h" />
+    <ClInclude Include="..\src\Player.h" />
+    <ClInclude Include="..\src\Struct.h" />
+    <ClInclude Include="..\src\StructBase.h" />
+    <ClInclude Include="..\src\StructTower.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
